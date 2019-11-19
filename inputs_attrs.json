@@ -1,0 +1,48 @@
+{
+	"agency.txt": {
+		"agency_id": "str",
+		"agency_name": "str",
+		"agency_url": "str",
+		"agency_timezone": "str",
+		"agency_lang": "str",
+		"agency_phone": "str",
+		"agency_fare_url": "str",
+		"agency_email": "str"
+	},
+    "calendar_dates.txt": {
+        "service_id": "str",
+        "date": "str",
+        "exception_type": "category"
+    },
+    "calendar.txt": {
+        "service_id": "str",
+        "monday": "category",
+        "tuesday": "category",
+        "wednesday": "category",
+        "thursday": "category",
+        "friday": "category",
+        "saturday": "category",
+        "sunday": "category",
+        "start_date": "str",
+        "end_date": "str"
+    },
+    "frequencies.txt": {
+        "trip_id": "str",
+        "start_time": "str",
+        "end_time": "str",
+        "headway_secs": "int",
+        "exact_times": "category"
+    },
+    "routes.txt": {
+        "route_id": "category",
+        "agency_id": "category",
+        "route_short_name": "category",
+        "route_long_name": "category",
+        "route_desc": "str",
+        "route_type": "category",
+        "route_url": "str",
+        "route_color": "category",
+        "route_text_color": "str",
+        "route_sort_order": "str"
+    }
+}
