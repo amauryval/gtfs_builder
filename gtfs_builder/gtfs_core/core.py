@@ -1,13 +1,18 @@
 import os
 
 import pandas as pd
+import geopandas as gpd
+
+from shapely.geometry import LineString
 
 import json
 
-from core.data_helper import DfOptimizer
+from gtfs_builder.gtfs_core.data_helper import DfOptimizer
+
 
 class InputDataNotFound(Exception):
     pass
+
 
 class OpeningProblem(Exception):
     pass
@@ -30,6 +35,8 @@ class OpenGtfs:
         "input_data"
     )
     _SEPARATOR = ","
+
+    _DEFAULT_EPSG = 4326
 
     def __init__(self, input_file):
         """
@@ -88,16 +95,12 @@ class OpenGtfs:
                 del default_fields_and_type[column_bot_found]
 
             # ok go to open input data
-            input_data = pd.read_csv(
+            self._input_data = pd.read_csv(
                 self.file_path,
                 sep=self._SEPARATOR,
                 dtype=default_fields_and_type,
                 usecols=default_fields_and_type.keys(),
             )
-
-            input_data = DfOptimizer(input_data)
-            self._input_data = input_data.data
-            print(input_data.memory_usage)
 
         except ValueError as err:
             raise OpeningProblem(err)
@@ -111,7 +114,51 @@ class OpenGtfs:
         :rtype: pandas.DataFrame
         """
         if not self._is_df_empty(self._input_data):
-            return self._input_data
+            input_data = DfOptimizer(self._input_data)
+            print(input_data.memory_usage)
+            return input_data.data
+
+    def gdf_from_df_long_lat(self, df, longitude, latitude):
+        """
+        Create a geodataframe with longitude and latitude fields
+
+        :param df: dataframe
+        :type df: pandas.DataFrame
+        :param longitude: longitude field name
+        :type longitude: string
+        :param latitude: latitude field name
+        :type latitude: string
+        :return: geodataframe with point
+        :rtype: geopandas.GeodataFrame with point
+        """
+
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df[longitude], df[latitude]),
+            crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+        )
+        gdf.drop([longitude, latitude], axis=1, inplace=True)
+
+        return gdf
+
+    def group_by_id_from_point_to_create_linestring(self, gdf, id_field, sequence_field, geom_field="geometry"):
+        """
+
+        :param gdf: geodataframe
+        :type gdf: geopandas.GeodataFrame
+        :param geom_field: geometry field name
+        :type geom_field: string
+        :return: geodataframe with linestrings for each id
+        :rtype: geopandas.GeodataFrame with point
+        """
+        gdf.sort_values(by=[id_field, sequence_field], inplace=True)
+        gdf = gdf.groupby(id_field)[geom_field].apply(lambda x: LineString(x.tolist())).reset_index(name="geometry")
+        gdf = gpd.GeoDataFrame(
+            gdf,
+            geometry=gdf["geometry"],
+            # crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+        )
+        return gdf
 
     def _is_df_empty(self, df):
         """

@@ -3,14 +3,18 @@ from gtfs_builder.gtfs_main.calendar_in import Calendar
 from gtfs_builder.gtfs_main.calendar_dates_in import CalendarDates
 from gtfs_builder.gtfs_main.frequencies_in import Frequencies
 from gtfs_builder.gtfs_main.routes_in import Routes
+from gtfs_builder.gtfs_main.shapes_in import Shapes
 
 
 
 
 if __name__ == '__main__':
     agency_data = Agency().data
-    calendar_data = Calendar().data
-    calendardates_data = CalendarDates().data
-    frequencies_data = Frequencies().data
-    routes_data = Routes().data
-    print(a)
+    # calendar_data = Calendar().data
+    # calendardates_data = CalendarDates().data
+    # frequencies_data = Frequencies().data
+    # routes_data = Routes().data
+    shapes_data = Shapes().data
+
+
+    print("Hello !")

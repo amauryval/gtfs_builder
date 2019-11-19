@@ -1,14 +1,15 @@
+import pandas as pd
 
 import numpy as np
 
 import dateutil
 
+
 class DfOptimizer:
     
-    def __init__(self, df, category_count_limit=50, geom_column="geometry"):
+    def __init__(self, df, category_count_limit=50):
         self._df = df
         self._category_count_limit = category_count_limit
-        self._geom_column = geom_column
 
         self._source_df_mem = self._get_memory_usage(self._df)
         self._optimize()
@@ -27,7 +28,7 @@ class DfOptimizer:
                     else:
                         self._format_float_column(col)
 
-                elif self._df[col].dtype == object and col != self._geom_column:
+                elif self._df[col].dtype == object:
                     if not self._convert_to_datetime(col):
                         if isinstance(self._df[col].iat[0], str) and self._df[col].nunique() <= 50:
                             self._df[col] = self._df[col].astype('category')
@@ -81,7 +82,11 @@ class DfOptimizer:
         self._df[col].astype(np.float32)
 
     def _get_memory_usage(self, df):
-        mem_usage = df.memory_usage(deep=True).sum()
+        if isinstance(df, pd.DataFrame):
+            mem_usage = df.memory_usage(deep=True).sum()
+        else:
+            mem_usage = df.memory_usage(deep=True)
+
         mem_usage = mem_usage / 1024 ** 2
         return f"{mem_usage:03.2f} MB"
 

@@ -44,5 +44,12 @@
         "route_color": "category",
         "route_text_color": "str",
         "route_sort_order": "str"
+    },
+    "shapes.txt": {
+        "shape_id": "str",
+        "shape_pt_lat": "float",
+        "shape_pt_lon": "float",
+        "shape_pt_sequence": "int",
+        "shape_dist_traveled": "float"
     }
 }

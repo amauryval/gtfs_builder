@@ -1,4 +1,5 @@
-from core.core import OpenGtfs
+from gtfs_builder.gtfs_core.core import OpenGtfs
+
 
 class Routes(OpenGtfs):
 
