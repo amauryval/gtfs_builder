@@ -7,7 +7,7 @@ from shapely.geometry import LineString
 
 import json
 
-from gtfs_builder.gtfs_core.data_helper import DfOptimizer
+from gtfs_builder.gtfs_core.optim_helper import DfOptimizer
 
 
 class InputDataNotFound(Exception):
@@ -44,6 +44,7 @@ class OpenGtfs:
         :param input_file: the name of the input file with its extension
         :type input_file: str
         """
+
         default_field_and_type = self._DEFAULT_JSON_ATTRS[input_file]
 
         print(f"Opening {input_file}")
@@ -135,7 +136,7 @@ class OpenGtfs:
         gdf = gpd.GeoDataFrame(
             df,
             geometry=gpd.points_from_xy(df[longitude], df[latitude]),
-            crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+            # crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
         )
         gdf.drop([longitude, latitude], axis=1, inplace=True)
 
