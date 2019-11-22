@@ -91,9 +91,11 @@ class OpenGtfs:
             ).columns
             # filter on default_fields_and_type
             columns_not_found = set(default_fields_and_type.keys()) - set(input_data_columns)
-            print(f"[{', '.join(columns_not_found)}] not found on input data: {self._input}")
-            for column_bot_found in columns_not_found:
-                del default_fields_and_type[column_bot_found]
+
+            if len(columns_not_found) > 0:
+                print(f"[{', '.join(columns_not_found)}] not found on input data: {self._input}")
+                for column_bot_found in columns_not_found:
+                    del default_fields_and_type[column_bot_found]
 
             # ok go to open input data
             self._input_data = pd.read_csv(

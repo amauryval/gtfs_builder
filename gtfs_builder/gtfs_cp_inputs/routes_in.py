@@ -22,6 +22,6 @@ class Routes(OpenGtfs):
     def __remap_route_type(self):
         self._input_data.replace(
             {"route_type": self._ROUTE_TYPE_MAPPING},
-            inplace = True
+            inplace=True
         )
 

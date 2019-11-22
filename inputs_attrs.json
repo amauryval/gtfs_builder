@@ -42,5 +42,17 @@
         "sunday": "category",
         "start_date": "str",
         "end_date": "str"
+    },
+    "routes.txt": {
+        "route_id": "category",
+        "agency_id": "category",
+        "route_short_name": "category",
+        "route_long_name": "category",
+        "route_desc": "str",
+        "route_type": "category",
+        "route_url": "str",
+        "route_color": "category",
+        "route_text_color": "str",
+        "route_sort_order": "str"
     }
 }
