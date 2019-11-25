@@ -13,8 +13,21 @@ from shapely.ops import split
 from shapely.geometry import Point
 from shapely.geometry import LineString
 
+import numpy as np
+
+import pandas as pd
+
+from datetime import datetime
+from datetime import timedelta
+
 
 class GtfsFormater:
+
+    __DEFAULT_DATETIME = None
+    __DEFAULT_END_STOP_CODE = None
+    __DEFAULT_END_STOP_NAME = None
+    __DEFAULT_STOP_NAME = None
+    __DEFAULT_STOP_TYPE = None
 
     def __init__(self):
         self.run()
@@ -54,15 +67,14 @@ class GtfsFormater:
 
     def _build_path(self):
 
-
         # filter by a day
         service_id_working = self._calendar_data.loc[self._calendar_data["monday"] == "1"]["service_id"].to_list()
         stops_data_build_filter_by_a_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service_id_working)].copy(deep=True)
-
         shapes_data_concerned_stops_data = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_data_build_filter_by_a_day["shape_id"].to_list())].copy(deep=True)
 
         count_line = 1
         count_trip = 1
+
         for line in shapes_data_concerned_stops_data.itertuples():
             print("line ", count_line)
             source_line_geom = line.geometry
@@ -71,11 +83,14 @@ class GtfsFormater:
             # line_stops.drop_duplicates(subset="stop_name", inplace=True)
             line_stops.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
+            list_of_points = []
             for trip_id in line_stops["trip_id"].to_list():
                 print("trip ", count_trip)
                 trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
                 line_geom = source_line_geom
-                for stop in trip_stops.itertuples():
+                start_stop = None
+
+                for pos, stop in enumerate(trip_stops.itertuples()):
 
                     projected_point = line_geom.interpolate(line_geom.project(stop.geometry))
 
@@ -95,22 +110,70 @@ class GtfsFormater:
                     line_geom_remaining.insert(0, list(projected_point.coords)[0])
                     line_geom = LineString(line_geom_remaining)
 
-                    new_geom = {
+                    arrival_time = datetime.strptime(stop.arrival_time, "%H:%M:%S")
+
+                    first_stops = {
                         "day": "",
-                        "start_time": stop.departure_time,
-                        "end_time": stop.arrival_time,
-                        "end_stop_code": stop.stop_code,
-                        "end_stop_name": stop.stop_name,
-                        "geom_start_stop": Point(new_segment.coords[0]).wkt,
-                        "geom_path": new_segment.wkt,
-                        "geom_end_stop": projected_point.wkt,
+                        "date_time": arrival_time - timedelta(minutes=1) if start_stop is None else start_stop["date_time"],
+                        "stop_code": self.__DEFAULT_END_STOP_CODE if start_stop is None else start_stop["stop_code"],
+                        "geom": Point(new_segment.coords[0]) if start_stop is None else start_stop["geom"], #projected_point.wkt,
+                        "stop_name": self.__DEFAULT_END_STOP_NAME if start_stop is None else start_stop["stop_name"],
+                        "stop_type": stop.route_type,
+                        "line_name": stop.route_long_name,
+                        "line_name_short": stop.route_short_name,
+                        "direction_id": stop.direction_id,
+                        "trip_id": trip_id,
+                        "pos": pos
+                    }
+                    pos_ext = pos + 1
+                    last_stops = {
+                        "day": "",
+                        "date_time": arrival_time,
+                        "stop_code": stop.stop_code,
+                        "geom": Point(new_segment.coords[-1]),
                         "stop_name": stop.stop_name,
                         "stop_type": stop.route_type,
                         "line_name": stop.route_long_name,
                         "line_name_short": stop.route_short_name,
-                        "direction_id": stop.direction_id
+                        "direction_id": stop.direction_id,
+                        "trip_id": trip_id,
+                        "pos": pos_ext
                     }
+
+                    list_of_points.append(first_stops)
+
+                    date_min = first_stops['date_time']
+                    date_max = last_stops['date_time']
+
+                    interpolation_value = int(new_segment.length / 0.000001)
+                    interpolated_datetime = pd.date_range(date_min, date_max, periods=interpolation_value).to_list()[1:-1]
+                    for idx, pt in enumerate(tuple(new_segment.interpolate(value, normalized=True) for value in np.linspace(0, 1, interpolation_value))[1:-1]):
+                        date = interpolated_datetime[idx]
+                        list_of_points.append({
+                            "day": "",
+                            "date_time": date,
+                            "stop_code": None,
+                            "geom": pt,
+                            "stop_name": None,
+                            "stop_type": stop.route_type,
+                            "line_name": stop.route_long_name,
+                            "line_name_short": stop.route_short_name,
+                            "direction_id": stop.direction_id,
+                            "pos": pos + (idx / 10)
+                        })
+                    list_of_points.append(last_stops)
+
+                    start_stop = last_stops
+
+                    print('aaaa')
                 count_trip += 1
+                data = pd.DataFrame(list_of_points)
+                # data.drop_duplicates(subset=["pos"], inplace=True)
+                import geopandas
+                gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
+                gdf.drop(columns=["geom"], inplace=True)
+                gdf.to_file("ahaha.geojson", driver="GeoJSON")
+                for f in data["geom"].to_list(): print(f)
             count_line += 1
 
 
