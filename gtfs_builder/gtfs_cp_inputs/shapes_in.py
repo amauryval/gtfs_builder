@@ -8,6 +8,10 @@ class Shapes(OpenGtfs):
         super(Shapes, self).__init__(input_file)
         self.__build_vehicule_trace()
 
+        self._input_data = self._reproject_gdf(
+            self._input_data
+        )
+
     def __build_vehicule_trace(self):
         self._input_data = self.gdf_from_df_long_lat(
             self._input_data,

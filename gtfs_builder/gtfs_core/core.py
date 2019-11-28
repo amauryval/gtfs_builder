@@ -35,6 +35,7 @@ class OpenGtfs:
         "input_data"
     )
     _SEPARATOR = ","
+    _OUTPUT_ESPG_KEY = "output_epsg"
 
     _DEFAULT_EPSG = 4326
 
@@ -50,6 +51,8 @@ class OpenGtfs:
         print(f"Opening {input_file}")
 
         self._input = input_file
+        self._to_epsg = self._DEFAULT_JSON_ATTRS[self._OUTPUT_ESPG_KEY]
+
         self._check_input_path()
         self._open_input_data(default_field_and_type)
 
@@ -138,8 +141,9 @@ class OpenGtfs:
         gdf = gpd.GeoDataFrame(
             df,
             geometry=gpd.points_from_xy(df[longitude], df[latitude]),
-            # crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+            crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
         )
+
         gdf.drop([longitude, latitude], axis=1, inplace=True)
 
         return gdf
@@ -159,7 +163,7 @@ class OpenGtfs:
         gdf = gpd.GeoDataFrame(
             gdf,
             geometry=gdf["geometry"],
-            # crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+            crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
         )
         return gdf
 
@@ -176,3 +180,8 @@ class OpenGtfs:
         if df.shape[0] == 0:
             print("Dataframe is empty")
             return True
+
+    def _reproject_gdf(self, gdf):
+        if self._to_epsg is not None:
+            gdf = gdf.to_crs({"init": f"epsg:{self._to_epsg}"})
+        return gdf

@@ -10,6 +10,10 @@ class Stops(OpenGtfs):
         self.__get_real_stops()
         self.__build_stop_points()
 
+        self._input_data = self._reproject_gdf(
+            self._input_data
+        )
+
     def __get_real_stops(self):
         self._input_data = self._input_data.loc[self._input_data["location_type"] == "0"]
 

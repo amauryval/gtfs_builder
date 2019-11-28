@@ -21,13 +21,18 @@ from datetime import datetime
 from datetime import timedelta
 
 
+
 class GtfsFormater:
+
+    __SUB_STOPS_RESOLUTION = 10
 
     __DEFAULT_DATETIME = None
     __DEFAULT_END_STOP_CODE = None
     __DEFAULT_END_STOP_NAME = None
     __DEFAULT_STOP_NAME = None
     __DEFAULT_STOP_TYPE = None
+
+    _OUTPUT_STOPS_POINTS = []
 
     def __init__(self):
         self.run()
@@ -67,115 +72,123 @@ class GtfsFormater:
 
     def _build_path(self):
 
-        # filter by a day
+        # filter by a day TODO get date
         service_id_working = self._calendar_data.loc[self._calendar_data["monday"] == "1"]["service_id"].to_list()
         stops_data_build_filter_by_a_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service_id_working)].copy(deep=True)
         shapes_data_concerned_stops_data = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_data_build_filter_by_a_day["shape_id"].to_list())].copy(deep=True)
 
-        count_line = 1
-        count_trip = 1
-
         for line in shapes_data_concerned_stops_data.itertuples():
-            print("line ", count_line)
-            source_line_geom = line.geometry
+            print(f"line {line.shape_id}")
+
             line_stops = stops_data_build_filter_by_a_day.loc[stops_data_build_filter_by_a_day["shape_id"] == line.shape_id].copy(deep=True)
             # we need only unique stop from one trip
             # line_stops.drop_duplicates(subset="stop_name", inplace=True)
             line_stops.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
-            list_of_points = []
+
             for trip_id in line_stops["trip_id"].to_list():
-                print("trip ", count_trip)
+
+                print(f"trip {trip_id}")
                 trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
-                line_geom = source_line_geom
-                start_stop = None
 
-                for pos, stop in enumerate(trip_stops.itertuples()):
+                line_geom_remaining = line.geometry
+                start_stops = None
 
-                    projected_point = line_geom.interpolate(line_geom.project(stop.geometry))
+                for stop_position, stop in enumerate(trip_stops.itertuples()):
 
-                    projected_point_buffered = projected_point.buffer(0.000001)
-                    line_splitted = split(line_geom, projected_point_buffered)
-                    line_splitted_result = list(line_splitted.geoms)
-                    first_seg = line_splitted_result[0]
-                    second_seg = line_splitted_result[-1]
-
-                    # create the new segment
-                    new_segment_coords = list(first_seg.coords)
-                    new_segment_coords.append(list(projected_point.coords)[0])
-                    new_segment = LineString(new_segment_coords)
-
-                    # update the line geom remaining
-                    line_geom_remaining = list(second_seg.coords)
-                    line_geom_remaining.insert(0, list(projected_point.coords)[0])
-                    line_geom = LineString(line_geom_remaining)
-
+                    line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(stop, line_geom_remaining)
+                    start_point = Point(line_stop_geom.coords[0])
+                    end_point = Point(line_stop_geom.coords[-1])
                     arrival_time = datetime.strptime(stop.arrival_time, "%H:%M:%S")
 
-                    first_stops = {
+                    start_stops = {
                         "day": "",
-                        "date_time": arrival_time - timedelta(minutes=1) if start_stop is None else start_stop["date_time"],
-                        "stop_code": self.__DEFAULT_END_STOP_CODE if start_stop is None else start_stop["stop_code"],
-                        "geom": Point(new_segment.coords[0]) if start_stop is None else start_stop["geom"], #projected_point.wkt,
-                        "stop_name": self.__DEFAULT_END_STOP_NAME if start_stop is None else start_stop["stop_name"],
+                        "date_time": arrival_time - timedelta(minutes=1) if start_stops is None else start_stops["date_time"],
+                        "stop_code": self.__DEFAULT_END_STOP_CODE if start_stops is None else start_stops["stop_code"],
+                        "geom": start_point if start_stops is None else start_stops["geom"], #projected_point.wkt,
+                        "stop_name": self.__DEFAULT_END_STOP_NAME if start_stops is None else start_stops["stop_name"],
                         "stop_type": stop.route_type,
                         "line_name": stop.route_long_name,
                         "line_name_short": stop.route_short_name,
                         "direction_id": stop.direction_id,
                         "trip_id": trip_id,
-                        "pos": pos
+                        "pos": stop_position
                     }
-                    pos_ext = pos + 1
                     last_stops = {
                         "day": "",
                         "date_time": arrival_time,
                         "stop_code": stop.stop_code,
-                        "geom": Point(new_segment.coords[-1]),
+                        "geom": end_point,
                         "stop_name": stop.stop_name,
                         "stop_type": stop.route_type,
                         "line_name": stop.route_long_name,
                         "line_name_short": stop.route_short_name,
                         "direction_id": stop.direction_id,
                         "trip_id": trip_id,
-                        "pos": pos_ext
+                        "pos": stop_position + 1
                     }
+                    self._OUTPUT_STOPS_POINTS.append(start_stops)
 
-                    list_of_points.append(first_stops)
+                    start_date = start_stops['date_time']
+                    end_date = last_stops['date_time']
 
-                    date_min = first_stops['date_time']
-                    date_max = last_stops['date_time']
+                    interpolation_value = int(line_stop_geom.length / self.__SUB_STOPS_RESOLUTION)
+                    interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()[1:-1]
+                    interpolated_points = tuple(
+                        line_stop_geom.interpolate(value, normalized=True)
+                        for value in np.linspace(0, 1, interpolation_value)
+                    )[1:-1]
+                    interpolated_data = zip(interpolated_datetime, interpolated_points)
 
-                    interpolation_value = int(new_segment.length / 0.000001)
-                    interpolated_datetime = pd.date_range(date_min, date_max, periods=interpolation_value).to_list()[1:-1]
-                    for idx, pt in enumerate(tuple(new_segment.interpolate(value, normalized=True) for value in np.linspace(0, 1, interpolation_value))[1:-1]):
-                        date = interpolated_datetime[idx]
-                        list_of_points.append({
-                            "day": "",
-                            "date_time": date,
-                            "stop_code": None,
-                            "geom": pt,
-                            "stop_name": None,
-                            "stop_type": stop.route_type,
-                            "line_name": stop.route_long_name,
-                            "line_name_short": stop.route_short_name,
-                            "direction_id": stop.direction_id,
-                            "pos": pos + (idx / 10)
-                        })
-                    list_of_points.append(last_stops)
+                    # about after the last stop, do not process it...
+                    if stop_position != trip_stops.shape[0] - 1:
+                        for sub_stop_position, (date_time, point) in enumerate(interpolated_data):
+                            self._OUTPUT_STOPS_POINTS.append({
+                                "day": "",
+                                "date_time": date_time,
+                                "stop_code": None,
+                                "geom": point,
+                                "stop_name": None,
+                                "stop_type": stop.route_type,
+                                "line_name": stop.route_long_name,
+                                "line_name_short": stop.route_short_name,
+                                "direction_id": stop.direction_id,
+                                "trip_id": trip_id,
+                                "pos": f"{stop_position}.{sub_stop_position}"
+                            })
 
-                    start_stop = last_stops
+                        start_stops = last_stops
 
-                    print('aaaa')
-                count_trip += 1
-                data = pd.DataFrame(list_of_points)
-                # data.drop_duplicates(subset=["pos"], inplace=True)
+                data = pd.DataFrame(self._OUTPUT_STOPS_POINTS).sort_values(by=["date_time"], ascending=True)
+                # data.drop_duplicates(subset=["date_time"], inplace=True)
+
                 import geopandas
                 gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
                 gdf.drop(columns=["geom"], inplace=True)
-                gdf.to_file("ahaha.geojson", driver="GeoJSON")
+                gdf.to_file("ahaha5.geojson", driver="GeoJSON")
                 for f in data["geom"].to_list(): print(f)
-            count_line += 1
 
+
+    def _get_dedicated_line_from_stop(self, stop, line_shape_geom_remained):
+        projected_point = line_shape_geom_remained.interpolate(line_shape_geom_remained.project(stop.geometry))
+
+        projected_point_buffered = projected_point.buffer(0.1)
+        line_splitted = split(line_shape_geom_remained, projected_point_buffered)
+        line_splitted_result = list(line_splitted.geoms)
+        first_seg = line_splitted_result[0]
+        second_seg = line_splitted_result[-1]
+
+        # create the new segment
+        stop_segment_coords = list(first_seg.coords)
+        stop_segment_coords.append(list(projected_point.coords)[0])
+        stop_segment = LineString(stop_segment_coords)
+
+        # update the line geom remaining
+        line_geom_remaining = list(second_seg.coords)
+        line_geom_remaining.insert(0, list(projected_point.coords)[0])
+        line_geom_remaining = LineString(line_geom_remaining)
+
+        return stop_segment, line_geom_remaining
 
 if __name__ == '__main__':
     GtfsFormater()
