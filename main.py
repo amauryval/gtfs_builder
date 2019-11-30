@@ -127,19 +127,19 @@ class GtfsFormater:
 
             processes = []
             for line in shapes_data_concerned_stops_data.itertuples():
-                if line.shape_id == "4503603929114738":
+                if line.shape_id is not None:# == "4503603929114738":
                     self._run_each_stop_from_each_line(date, stops_data_build_filter_by_a_day, line)
                     # processes.append([self._run_each_stop_from_each_line, date, stops_data_build_filter_by_a_day, line])
 
             # run_threads(processes, 8)
 
-                    data = pd.concat(self._OUTPUT_STOPS_POINTS, ignore_index=True).sort_values(by=["date_time"], ascending=True)
-                    gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
-                    gdf.drop(columns=["geom"], inplace=True)
-                    gdf.to_file(f"data_one3.gpkg", driver="GPKG", layer=f"{line.shape_id}")
-                    print(datetime.datetime.now())
-                    assert False
 
+                data = pd.concat(self._OUTPUT_STOPS_POINTS, ignore_index=True).sort_values(by=["date_time"], ascending=True)
+                gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
+                gdf.drop(columns=["geom"], inplace=True)
+                gdf.to_file(f"data_one3.gpkg", driver="GPKG", layer=f"{line.shape_id}")
+                print(datetime.datetime.now())
+            assert False
 
     def _run_each_stop_from_each_line(self, date, stops_data_build_filter_by_a_day, line):
 
