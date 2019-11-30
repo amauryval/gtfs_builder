@@ -45,7 +45,7 @@ def run_threads(processes, workers_number=4):
 
 class GtfsFormater:
 
-    __SUB_STOPS_RESOLUTION = 1000
+    __SUB_STOPS_RESOLUTION = 10
 
     __DAYS_MAPPING = [
         "monday",
@@ -127,7 +127,7 @@ class GtfsFormater:
 
             processes = []
             for line in shapes_data_concerned_stops_data.itertuples():
-                if line.shape_id is not None:# "4503603929114738":
+                if line.shape_id == "4503603929114738":
                     self._run_each_stop_from_each_line(date, stops_data_build_filter_by_a_day, line)
                     # processes.append([self._run_each_stop_from_each_line, date, stops_data_build_filter_by_a_day, line])
 
@@ -136,9 +136,9 @@ class GtfsFormater:
                     data = pd.concat(self._OUTPUT_STOPS_POINTS, ignore_index=True).sort_values(by=["date_time"], ascending=True)
                     gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
                     gdf.drop(columns=["geom"], inplace=True)
-                    gdf.to_file(f"data3.gpkg", driver="GPKG", layer=f"{line.shape_id}")
+                    gdf.to_file(f"data_one.gpkg", driver="GPKG", layer=f"{line.shape_id}")
                     print(datetime.datetime.now())
-            assert False
+                    assert False
 
 
     def _run_each_stop_from_each_line(self, date, stops_data_build_filter_by_a_day, line):
@@ -278,7 +278,7 @@ class GtfsFormater:
         all_points_coords = chain(line_shape_geom_remained.coords, projected_point.coords)
         all_points = map(Point, all_points_coords)
         new_line = LineString(sorted(all_points, key=line_shape_geom_remained.project))
-        line_splitted_result = split(new_line, projected_point.coords)
+        line_splitted_result = split(new_line, projected_point)
         stop_segment = line_splitted_result[0]
         line_geom_remaining = line_splitted_result[-1]
 
