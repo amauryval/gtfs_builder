@@ -136,7 +136,7 @@ class GtfsFormater:
                     data = pd.concat(self._OUTPUT_STOPS_POINTS, ignore_index=True).sort_values(by=["date_time"], ascending=True)
                     gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
                     gdf.drop(columns=["geom"], inplace=True)
-                    gdf.to_file(f"data_one.gpkg", driver="GPKG", layer=f"{line.shape_id}")
+                    gdf.to_file(f"data_one3.gpkg", driver="GPKG", layer=f"{line.shape_id}")
                     print(datetime.datetime.now())
                     assert False
 
@@ -159,14 +159,15 @@ class GtfsFormater:
             start_stops = None
 
             for stop_position, stop in enumerate(trip_stops.itertuples()):
-
+                if trip_id == "4503603929114738":
+                    a = 0
+                    pass
                 start_stop_code = self.__DEFAULT_END_STOP_CODE if start_stops is None else start_stops["stop_code"]
 
                 hours, minutes, seconds = map(int, stop.arrival_time.split(":"))
                 arrival_time = date + datetime.timedelta(seconds=seconds, minutes=minutes, hours=hours)
                 start_date = arrival_time - datetime.timedelta(minutes=1) if start_stops is None else start_stops["date_time"]
                 end_date = arrival_time
-
                 is_data_found = objects_line.get(f"{start_stop_code}_{stop.stop_code}", None)
                 if is_data_found is not None:
                     line_stop_geom, interpolated_points = is_data_found
@@ -222,24 +223,22 @@ class GtfsFormater:
                 # )[1:-1]
                 interpolated_data = zip(interpolated_datetime, interpolated_points)
 
-                # about after the last stop, do not process it...
-                if stop_position != trip_stops.shape[0] - 1:
-                    for sub_stop_position, (date_time, point) in enumerate(interpolated_data):
-                        new_point = {
-                            "date_time": date_time,
-                            "stop_code": None,
-                            "geom": point,
-                            "stop_name": None,
-                            "stop_type": stop.route_type,
-                            "line_name": stop.route_long_name,
-                            "line_name_short": stop.route_short_name,
-                            "direction_id": stop.direction_id,
-                            "trip_id": trip_id,
-                            "pos": f"{stop_position}.{sub_stop_position}"
-                        }
-                        line_stops_computed.append(new_point)
-                        # print(point.wkt)
-                    start_stops = last_stops
+                for sub_stop_position, (date_time, point) in enumerate(interpolated_data):
+                    new_point = {
+                        "date_time": date_time,
+                        "stop_code": None,
+                        "geom": point,
+                        "stop_name": None,
+                        "stop_type": stop.route_type,
+                        "line_name": stop.route_long_name,
+                        "line_name_short": stop.route_short_name,
+                        "direction_id": stop.direction_id,
+                        "trip_id": trip_id,
+                        "pos": f"{stop_position}.{sub_stop_position}"
+                    }
+                    line_stops_computed.append(new_point)
+                    # print(point.wkt)
+                start_stops = last_stops
 
         trip_done = pd.DataFrame(line_stops_computed)
         self._OUTPUT_STOPS_POINTS.append(trip_done)
@@ -282,6 +281,8 @@ class GtfsFormater:
         stop_segment = line_splitted_result[0]
         line_geom_remaining = line_splitted_result[-1]
 
+        if line_geom_remaining.equals(stop_segment):
+            stop_segment = LineString([projected_point, projected_point])
 
         return stop_segment, line_geom_remaining
 
