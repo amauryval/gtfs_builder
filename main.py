@@ -17,14 +17,43 @@ import numpy as np
 
 import pandas as pd
 
-from datetime import datetime
-from datetime import timedelta
+import datetime
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+
+
+
+
+
+def run_threads(processes, workers_number=4):
+
+    with ThreadPoolExecutor(max_workers=workers_number) as executor:
+
+        executions = []
+        for process in processes:
+            if isinstance(process, list):
+                executions.append(executor.submit(*process))
+            else:
+                executions.append(executor.submit(process))
+        # to return exceptions
+        for exe in as_completed(executions):
+            exe._Future__get_result()
 
 
 
 class GtfsFormater:
 
-    __SUB_STOPS_RESOLUTION = 10
+    __SUB_STOPS_RESOLUTION = 100
+
+    __DAYS_MAPPING = [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+    ]
 
     __DEFAULT_DATETIME = None
     __DEFAULT_END_STOP_CODE = None
@@ -72,23 +101,49 @@ class GtfsFormater:
 
     def _build_path(self):
 
-        # filter by a day TODO get date
-        service_id_working = self._calendar_data.loc[self._calendar_data["monday"] == "1"]["service_id"].to_list()
-        stops_data_build_filter_by_a_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service_id_working)].copy(deep=True)
-        shapes_data_concerned_stops_data = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_data_build_filter_by_a_day["shape_id"].to_list())].copy(deep=True)
+        end_date = max(self._calendar_data["end_date"].to_list())
+        start_date = min(self._calendar_data["start_date"].to_list())
 
-        for line in shapes_data_concerned_stops_data.itertuples():
+        service_ids_to_proceed_by_day = {}
+        while start_date <= end_date:
+            start_date_day = self.__DAYS_MAPPING[start_date.weekday()]
+            service_id_working = self._calendar_data.loc[
+                (self._calendar_data[start_date_day] == "1") & ((self._calendar_data["start_date"] >= start_date) | (self._calendar_data["end_date"] <= start_date))
+            ]["service_id"].to_list()
+
+            service_ids_to_proceed_by_day[start_date] = service_id_working
+
+            start_date += datetime.timedelta(days=1)
+
+        for date, service_ids_working in service_ids_to_proceed_by_day.items():
+            print(f">>>> {date}")
+            self._OUTPUT_STOPS_POINTS = []
+            # EACH DAY
+            stops_data_build_filter_by_a_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service_ids_working)].copy(deep=True)
+            shapes_data_concerned_stops_data = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_data_build_filter_by_a_day["shape_id"].to_list())].copy(deep=True)
+
+            processes = []
+            for line in shapes_data_concerned_stops_data.itertuples():
+                processes.append([self._run_each_stop_from_each_line, date, stops_data_build_filter_by_a_day, line])
+
+            run_threads(processes)
+
+            data = pd.DataFrame(self._OUTPUT_STOPS_POINTS).sort_values(by=["date_time"], ascending=True)
+            import geopandas
+            gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
+            gdf.drop(columns=["geom"], inplace=True)
+            gdf.to_file(f"data.gpkg", driver="GPKG", layer=f"{date.strftime('%Y_%m_%d')}")
+
+    def _run_each_stop_from_each_line(self, date, stops_data_build_filter_by_a_day, line):
             print(f"line {line.shape_id}")
 
             line_stops = stops_data_build_filter_by_a_day.loc[stops_data_build_filter_by_a_day["shape_id"] == line.shape_id].copy(deep=True)
             # we need only unique stop from one trip
-            # line_stops.drop_duplicates(subset="stop_name", inplace=True)
             line_stops.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
+            for trip_id in set(line_stops["trip_id"].to_list()):
 
-            for trip_id in line_stops["trip_id"].to_list():
-
-                print(f"trip {trip_id}")
+                # print(f"trip {trip_id}")
                 trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
 
                 line_geom_remaining = line.geometry
@@ -99,13 +154,14 @@ class GtfsFormater:
                     line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(stop, line_geom_remaining)
                     start_point = Point(line_stop_geom.coords[0])
                     end_point = Point(line_stop_geom.coords[-1])
-                    arrival_time = datetime.strptime(stop.arrival_time, "%H:%M:%S")
+                    hours, minutes, seconds = map(int, stop.arrival_time.split(":"))
+                    arrival_time = date + datetime.timedelta(seconds=seconds, minutes=minutes, hours=hours)
 
                     start_stops = {
                         "day": "",
-                        "date_time": arrival_time - timedelta(minutes=1) if start_stops is None else start_stops["date_time"],
+                        "date_time": arrival_time - datetime.timedelta(minutes=1) if start_stops is None else start_stops["date_time"],
                         "stop_code": self.__DEFAULT_END_STOP_CODE if start_stops is None else start_stops["stop_code"],
-                        "geom": start_point if start_stops is None else start_stops["geom"], #projected_point.wkt,
+                        "geom": start_point if start_stops is None else start_stops["geom"],
                         "stop_name": self.__DEFAULT_END_STOP_NAME if start_stops is None else start_stops["stop_name"],
                         "stop_type": stop.route_type,
                         "line_name": stop.route_long_name,
@@ -159,21 +215,22 @@ class GtfsFormater:
 
                         start_stops = last_stops
 
-                data = pd.DataFrame(self._OUTPUT_STOPS_POINTS).sort_values(by=["date_time"], ascending=True)
-                # data.drop_duplicates(subset=["date_time"], inplace=True)
-
-                import geopandas
-                gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
-                gdf.drop(columns=["geom"], inplace=True)
-                gdf.to_file("ahaha5.geojson", driver="GeoJSON")
-                for f in data["geom"].to_list(): print(f)
-
-
     def _get_dedicated_line_from_stop(self, stop, line_shape_geom_remained):
-        projected_point = line_shape_geom_remained.interpolate(line_shape_geom_remained.project(stop.geometry))
 
-        projected_point_buffered = projected_point.buffer(0.1)
-        line_splitted = split(line_shape_geom_remained, projected_point_buffered)
+        buffer_value_to_split = 0.1
+        num_retries = 4
+
+        projected_point = line_shape_geom_remained.interpolate(line_shape_geom_remained.project(stop.geometry))
+        projected_point_buffered = projected_point.buffer(buffer_value_to_split)
+
+        line_splitted = None
+        for _ in range(0, num_retries):
+            try:
+                line_splitted = split(line_shape_geom_remained, projected_point_buffered)
+            except TypeError:
+                buffer_value_to_split = buffer_value_to_split / 10
+                projected_point_buffered = projected_point.buffer(buffer_value_to_split)
+
         line_splitted_result = list(line_splitted.geoms)
         first_seg = line_splitted_result[0]
         second_seg = line_splitted_result[-1]
@@ -189,6 +246,13 @@ class GtfsFormater:
         line_geom_remaining = LineString(line_geom_remaining)
 
         return stop_segment, line_geom_remaining
+
+    def _get_weekday_from_date(self, date_value, day):
+
+        while date_value.weekday() != self.__DAYS_MAPPING[day]:
+            date_value += datetime.timedelta(days=1)
+
+        return date_value
 
 if __name__ == '__main__':
     GtfsFormater()
