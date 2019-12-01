@@ -3,7 +3,7 @@ from gtfs_builder.gtfs_core.core import OpenGtfs
 
 class Frequencies(OpenGtfs):
 
-    def __init__(self, input_file="frequencies.txt"):
+    def __init__(self, geo_tools_core, input_file="frequencies.txt"):
 
-        super(Frequencies, self).__init__(input_file)
+        super(Frequencies, self).__init__(geo_tools_core, input_file)
 

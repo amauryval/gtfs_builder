@@ -1,4 +1,4 @@
-
+*.gpkg*
 .idea
 input_data/*.txt
 # Byte-compiled / optimized / DLL files

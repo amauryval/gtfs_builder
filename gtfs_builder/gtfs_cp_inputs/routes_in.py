@@ -14,9 +14,9 @@ class Routes(OpenGtfs):
         "7": "funicular"
     }
 
-    def __init__(self, input_file="routes.txt"):
+    def __init__(self, geo_tools_core, input_file="routes.txt"):
 
-        super(Routes, self).__init__(input_file)
+        super(Routes, self).__init__(geo_tools_core, input_file)
         self.__remap_route_type()
 
     def __remap_route_type(self):

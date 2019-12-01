@@ -3,9 +3,9 @@ from gtfs_builder.gtfs_core.core import OpenGtfs
 
 class Stops(OpenGtfs):
 
-    def __init__(self, input_file="stops.txt"):
+    def __init__(self, geo_tools_core, input_file="stops.txt"):
 
-        super(Stops, self).__init__(input_file)
+        super(Stops, self).__init__(geo_tools_core, input_file)
 
         self.__get_real_stops()
         self.__build_stop_points()

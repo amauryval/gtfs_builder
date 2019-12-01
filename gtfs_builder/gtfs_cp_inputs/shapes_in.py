@@ -3,9 +3,10 @@ from gtfs_builder.gtfs_core.core import OpenGtfs
 
 class Shapes(OpenGtfs):
 
-    def __init__(self, input_file="shapes.txt"):
+    def __init__(self, geo_tools_core, input_file="shapes.txt"):
 
-        super(Shapes, self).__init__(input_file)
+        super(Shapes, self).__init__(geo_tools_core, input_file)
+
         self.__build_vehicule_trace()
 
         self._input_data = self._reproject_gdf(

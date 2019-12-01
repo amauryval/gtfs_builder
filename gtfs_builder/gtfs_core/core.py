@@ -39,16 +39,17 @@ class OpenGtfs:
 
     _DEFAULT_EPSG = 4326
 
-    def __init__(self, input_file):
+    def __init__(self, geo_tools_core, input_file):
         """
 
         :param input_file: the name of the input file with its extension
         :type input_file: str
         """
+        self.core = geo_tools_core
 
         default_field_and_type = self._DEFAULT_JSON_ATTRS[input_file]
 
-        print(f"Opening {input_file}")
+        self.core.lgc_info(f"Opening {input_file}")
 
         self._input = input_file
         self._to_epsg = self._DEFAULT_JSON_ATTRS[self._OUTPUT_ESPG_KEY]
@@ -83,9 +84,8 @@ class OpenGtfs:
         """
 
         if len(default_fields_and_type) == 0:
-            print("Default fields not defined")
+            self.core.lgc_warning("Default fields not defined")
         try:
-
             # because usecols on read_csv sucks!
             input_data_columns = pd.read_csv(
                 self.file_path,
@@ -96,7 +96,7 @@ class OpenGtfs:
             columns_not_found = set(default_fields_and_type.keys()) - set(input_data_columns)
 
             if len(columns_not_found) > 0:
-                print(f"[{', '.join(columns_not_found)}] not found on input data: {self._input}")
+                self.core.lgc_warning(f"[{', '.join(columns_not_found)}] not found on input data: {self._input}")
                 for column_bot_found in columns_not_found:
                     del default_fields_and_type[column_bot_found]
 
@@ -121,7 +121,7 @@ class OpenGtfs:
         """
         if not self._is_df_empty(self._input_data):
             input_data = DfOptimizer(self._input_data)
-            print(input_data.memory_usage)
+            self.core.lgc_info(input_data.memory_usage)
             return input_data.data
 
     def gdf_from_df_long_lat(self, df, longitude, latitude):

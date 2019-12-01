@@ -7,9 +7,9 @@ class Trips(OpenGtfs):
         "1": "forth"
     }
 
-    def __init__(self, input_file="trips.txt"):
+    def __init__(self, geo_tools_core, input_file="trips.txt"):
 
-        super(Trips, self).__init__(input_file)
+        super(Trips, self).__init__(geo_tools_core, input_file)
         self.__remap_direction_id()
 
     def __remap_direction_id(self):
