@@ -25,11 +25,13 @@ import datetime
 
 import geopandas
 
+from gtfs_builder.gtfs_db.base import Base
+from gtfs_builder.gtfs_db.stops import StopsMapped
+
 
 class GtfsFormater(GeoTools):
 
     __SUB_STOPS_RESOLUTION = 50
-
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -45,14 +47,51 @@ class GtfsFormater(GeoTools):
 
     _OUTPUT_STOPS_POINTS = []
 
-    def __init__(self):
+    def __init__(self, credentials, overwriting_db_mode):
         super().__init__()
+
+        self._credentials = credentials
+        self._overwriting_db_mode = overwriting_db_mode
+
         self.run()
 
     def run(self):
+        self._prepare_db()
         self._prepare_inputs()
         self._build_stops_data()
         self._build_path()
+
+    def _prepare_db(self):
+        # TODO add crash exception
+        self.lgc_info('Create Db')
+
+        overwrite_db = False
+        if self._overwriting_db_mode == "full":
+            overwrite_db = True
+
+        pg_con = self.db_sql_alchemy_pg_init(
+            **self._credentials,
+            overwrite=overwrite_db,
+            verbose=True
+        )
+        self._engine = pg_con['engine']
+        self._session = pg_con['session']
+
+        if self._overwriting_db_mode == "tables":
+            Base.metadata.drop_all(self._engine)
+
+        schemas = Base.schemas()
+        for schema in schemas:
+            self.db_schema_init(self._engine, schema)
+
+        Base.metadata.create_all(self._engine)
+        for table in Base.tables():
+            self.lgc_info(f"Table  created: {table}")
+
+
+        StopsMapped.set_session(self._session)
+        self._schema_name = StopsMapped.infos().schema
+        self._table_name = StopsMapped.infos().name
 
     def _prepare_inputs(self):
 
@@ -112,41 +151,53 @@ class GtfsFormater(GeoTools):
             processes = []
             for count, line in enumerate(shapes_data_concerned_stops_data.itertuples()):
                 shape_id_line = line.shape_id
-                # if shape_id_line is not None:# == "4503603929114738":
+                if shape_id_line == "4503603929098653":
+                    a = 0
                 line_stops = stops_data_build_filter_by_a_day.loc[stops_data_build_filter_by_a_day["shape_id"] == shape_id_line].copy()
 
                 line_caracteristics = np.unique(line_stops[["route_type", "route_short_name"]].values)
                 if len(line_caracteristics) > 2:
                     raise ValueError(
-                        f"line name proceed should be unique (count: {len(route_short_name)} ; {','.join(route_short_name)}")
+                        f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
                 caract1, caract2 = line_caracteristics
                 self.lgc_info(f"> ({count}) working line {shape_id_line} ({caract1}: {caract2})")
                 line_stops.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
+                self._line_stops_computed = []
                 self._run_each_stop_from_each_line(date, line_stops, line)
                 # processes.append([self._run_each_stop_from_each_line, date, stops_data_build_filter_by_a_day, line])
 
                 # self.run_threads(processes, 8)
-                data = pd.concat(self._OUTPUT_STOPS_POINTS, ignore_index=True).sort_values(by=["date_time"], ascending=True)
-                gdf = geopandas.GeoDataFrame(data, geometry=data["geom"])
+
+                # gdf = pd.concat(self._line_stops_computed, ignore_index=True).sort_values(by=["date_time"], ascending=True)
+                gdf = geopandas.GeoDataFrame(self._line_stops_computed, geometry=self._line_stops_computed["geom"])
                 gdf.drop(columns=["geom"], inplace=True)
-                gdf.to_file(f"data_one4.gpkg", driver="GPKG", layer=f"{start_date_day}")
-                assert False
+
+                data = self.gdf_design_checker(self._engine, self._schema_name, self._table_name, gdf, 2154)
+                dict_data = self.df_to_dicts_list(data, 2154)
+                self.db_write_dict_list_into_db(self._engine, dict_data, self._schema_name, self._table_name)
+
+                # gdf.to_file(f"data_one4.gpkg", driver="GPKG", layer=f"{start_date_day}")
+            assert False
 
     def _run_each_stop_from_each_line(self, date, line_stops, line):
 
         objects_line = {}
-        line_stops_computed = list()
+        line_stops_computed = []
 
         trips_to_proceed = set(line_stops["trip_id"].to_list())
 
         for trip_id in trips_to_proceed:
+            print(trip_id)
+            if trip_id == "4503603929098662":
+                a = 0
+
 
             trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
 
             line_geom_remaining = line.geometry
             start_stops = self.__DEFAULT_VALUE_START_STOP
-
+            aa = []
             for stop_position, stop in enumerate(trip_stops.itertuples()):
 
                 default_common_attributes = {
@@ -158,82 +209,95 @@ class GtfsFormater(GeoTools):
                     "trip_id": trip_id,
                 }
 
-                if trip_id == "4503603929114738":
+                start_stop_code = self.__DEFAULT_VALUE_START_STOP if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["stop_code"]
+
+                if start_stop_code == "20031":
                     a = 0
                     pass
-
-                start_stop_code = self.__DEFAULT_VALUE_START_STOP if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["stop_code"]
                 hours, minutes, seconds = map(int, stop.arrival_time.split(":"))
                 arrival_time = date + datetime.timedelta(seconds=seconds, minutes=minutes, hours=hours)
                 start_date = arrival_time - datetime.timedelta(minutes=1) if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["date_time"]
                 end_date = arrival_time
 
-                object_id = f"{start_stop_code}0{stop.stop_code}"
-                # is_data_found = objects_line.get(f"{start_stop_code}_{stop.stop_code}", None)
-                is_data_found = self._object_line.loc[self._object_line["id"] == object_id]
-                if is_data_found.shape[0] == 1:
-                    line_stop_geom = is_data_found["line_stop_geom"].iloc[0]
-                    interpolated_points = is_data_found["interpolated_points"].iloc[0]
+                # sometimes a stop appears at the same time with the last
+                if start_date < end_date:
 
-                else:
-                    line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(stop, line_geom_remaining)
+                    object_id = f"{start_stop_code}_{stop.stop_code}"
+                    # print(object_id)
+                    # is_data_found = objects_line.get(f"{start_stop_code}_{stop.stop_code}", None)
+                    is_data_found = self._object_line.loc[self._object_line["id"] == object_id]
+                    if is_data_found.shape[0] == 1:
+                        line_stop_geom = is_data_found["line_stop_geom"].iloc[0]
+                        interpolated_points = is_data_found["interpolated_points"].iloc[0]
 
-                    # data interpolated
-                    interpolation_value = int(line_stop_geom.length / self.__SUB_STOPS_RESOLUTION) #create func
-                    interpolated_points = tuple(
-                        line_stop_geom.interpolate(value, normalized=True)
-                        for value in np.linspace(0, 1, interpolation_value)
-                    )[1:-1]
+                    else:
+                        line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(stop, line_geom_remaining)
 
-                    new_entry = pd.DataFrame([{
-                        "id": object_id,
-                        "line_stop_geom": line_stop_geom,
-                        "interpolated_points": interpolated_points
-                    }])
-                    new_entry["id"] = new_entry["id"].astype('category')
-                    self._object_line = pd.concat([self._object_line, new_entry])
+                        # data interpolated
+                        interpolation_value = int(line_stop_geom.length / self.__SUB_STOPS_RESOLUTION) #create func
+                        interpolated_points = tuple(
+                            line_stop_geom.interpolate(value, normalized=True)
+                            for value in np.linspace(0, 1, interpolation_value)
+                        )[1:-1]
 
-                    # objects_line[f"{start_stop_code}_{stop.stop_code}"] = (line_stop_geom, interpolated_points)
+                        new_entry = pd.DataFrame([{
+                            "id": object_id,
+                            "line_stop_geom": line_stop_geom,
+                            "interpolated_points": interpolated_points
+                        }])
+                        new_entry["id"] = new_entry["id"].astype('category')
+                        self._object_line = pd.concat([self._object_line, new_entry])
 
-                start_point = Point(line_stop_geom.coords[0])
-                end_point = Point(line_stop_geom.coords[-1])
+                        # objects_line[f"{start_stop_code}_{stop.stop_code}"] = (line_stop_geom, interpolated_points)
 
-                start_stops = {
-                    "date_time": start_date,
-                    "stop_code": start_stop_code,
-                    "geom": start_point if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["geom"],
-                    "stop_name": self.__DEFAULT_END_STOP_NAME if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["stop_name"],
-                    "pos": stop_position
-                }
-                start_stops.update(default_common_attributes)
+                    start_point = Point(line_stop_geom.coords[0])
+                    end_point = Point(line_stop_geom.coords[-1])
 
-                last_stops = {
-                    "date_time": end_date,
-                    "stop_code": stop.stop_code,
-                    "geom": end_point,
-                    "stop_name": stop.stop_name,
-                    "pos": stop_position + 1
-                }
-                line_stops_computed.append(start_stops)
-                start_stops = last_stops
-
-                interpolation_value = int(line_stop_geom.length / self.__SUB_STOPS_RESOLUTION)
-                interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()[1:-1]
-                interpolated_data = zip(interpolated_datetime, interpolated_points)
-
-                for sub_stop_position, (date_time, point) in enumerate(interpolated_data):
-                    new_point = {
-                        "date_time": date_time,
-                        "stop_code": None,
-                        "geom": point,
-                        "stop_name": None,
-                        "pos": f"{stop_position}.{sub_stop_position}"
+                    start_stops = {
+                        "date_time": start_date,
+                        "stop_code": start_stop_code,
+                        "geom": start_point if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["geom"],
+                        "stop_name": self.__DEFAULT_END_STOP_NAME if start_stops == self.__DEFAULT_VALUE_START_STOP else start_stops["stop_name"],
+                        "pos": stop_position
                     }
-                    new_point.update(default_common_attributes)
-                    line_stops_computed.append(new_point)
+                    start_stops.update(default_common_attributes)
 
-        trip_done = pd.DataFrame(line_stops_computed)
-        self._OUTPUT_STOPS_POINTS.append(trip_done)
+                    last_stops = {
+                        "date_time": end_date,
+                        "stop_code": stop.stop_code,
+                        "geom": end_point,
+                        "stop_name": stop.stop_name,
+                        "pos": stop_position + 1
+                    }
+                    line_stops_computed.append(start_stops)
+                    aa.append(start_stops)
+                    start_stops = last_stops
+
+                    interpolation_value = int(line_stop_geom.length / self.__SUB_STOPS_RESOLUTION)
+                    interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()[1:-1]
+
+                    interpolated_data = zip(interpolated_datetime, interpolated_points)
+
+                    for sub_stop_position, (date_time, point) in enumerate(interpolated_data):
+                        new_point = {
+                            "date_time": date_time,
+                            "stop_code": None,
+                            "geom": point,
+                            "stop_name": None,
+                            "pos": f"{stop_position}.{sub_stop_position}"
+                        }
+                        new_point.update(default_common_attributes)
+                        line_stops_computed.append(new_point)
+                        aa.append(new_point)
+
+        self._line_stops_computed = pd.DataFrame(line_stops_computed)
+        # gdf = geopandas.GeoDataFrame(trip_done, geometry=trip_done["geom"])
+        # gdf.drop(columns=["geom"], inplace=True)
+        #
+        # data = self.gdf_design_checker(self._engine, self._schema_name, self._table_name, gdf, 2154)
+        # dict_data = self.df_to_dicts_list(data, 2154)
+        # self.db_write_dict_list_into_db(self._engine, dict_data, self._schema_name, self._table_name)
+        # self._OUTPUT_STOPS_POINTS.append(trip_done)
 
 
     def _get_dedicated_line_from_stop(self, stop, line_shape_geom_remained):
@@ -260,4 +324,15 @@ class GtfsFormater(GeoTools):
         return date_value
 
 if __name__ == '__main__':
-    GtfsFormater()
+    input_db = {
+        "credentials": {
+            "host": "localhost",
+            "port": 5432,
+            "database": "gtfs_db",
+            "username": "postgres",
+            "password": "postgres",
+            "extensions": ["btree_gist", "postgis"]
+        },
+        "overwriting_data_mode": "full",
+    }
+    GtfsFormater(input_db["credentials"], input_db["overwriting_data_mode"])
