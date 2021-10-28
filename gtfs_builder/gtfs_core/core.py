@@ -39,7 +39,7 @@ class OpenGtfs:
 
     _DEFAULT_EPSG = 4326
 
-    def __init__(self, geo_tools_core, input_file):
+    def __init__(self, geo_tools_core, input_file, use_original_epsg=False):
         """
 
         :param input_file: the name of the input file with its extension
@@ -49,10 +49,14 @@ class OpenGtfs:
 
         default_field_and_type = self._DEFAULT_JSON_ATTRS[input_file]
 
-        self.core.lgc_info(f"Opening {input_file}")
+        self.core.logger.info(f"Opening {input_file}")
 
         self._input = input_file
-        self._to_epsg = self._DEFAULT_JSON_ATTRS[self._OUTPUT_ESPG_KEY]
+
+        if not use_original_epsg:
+            self._to_epsg = self._DEFAULT_JSON_ATTRS[self._OUTPUT_ESPG_KEY]
+        else:
+            self._to_epsg = None
 
         self._check_input_path()
         self._open_input_data(default_field_and_type)
@@ -84,7 +88,7 @@ class OpenGtfs:
         """
 
         if len(default_fields_and_type) == 0:
-            self.core.lgc_warning("Default fields not defined")
+            self.core.logger.warning("Default fields not defined")
         try:
             # because usecols on read_csv sucks!
             input_data_columns = pd.read_csv(
@@ -96,7 +100,7 @@ class OpenGtfs:
             columns_not_found = set(default_fields_and_type.keys()) - set(input_data_columns)
 
             if len(columns_not_found) > 0:
-                self.core.lgc_warning(f"[{', '.join(columns_not_found)}] not found on input data: {self._input}")
+                self.core.logger.warning(f"[{', '.join(columns_not_found)}] not found on input data: {self._input}")
                 for column_bot_found in columns_not_found:
                     del default_fields_and_type[column_bot_found]
 
@@ -121,7 +125,7 @@ class OpenGtfs:
         """
         if not self._is_df_empty(self._input_data):
             input_data = DfOptimizer(self._input_data)
-            self.core.lgc_info(input_data.memory_usage)
+            self.core.logger.info(input_data.memory_usage)
             return input_data.data
 
     def gdf_from_df_long_lat(self, df, longitude, latitude):
@@ -141,7 +145,7 @@ class OpenGtfs:
         gdf = gpd.GeoDataFrame(
             df,
             geometry=gpd.points_from_xy(df[longitude], df[latitude]),
-            crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+            # crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
         )
 
         gdf.drop([longitude, latitude], axis=1, inplace=True)
@@ -163,7 +167,7 @@ class OpenGtfs:
         gdf = gpd.GeoDataFrame(
             gdf,
             geometry=gdf["geometry"],
-            crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
+            # crs={'init': f"epsg:{self._DEFAULT_EPSG}"}
         )
         return gdf
 
@@ -182,6 +186,6 @@ class OpenGtfs:
             return True
 
     def _reproject_gdf(self, gdf):
-        if self._to_epsg is not None:
-            gdf = gdf.to_crs({"init": f"epsg:{self._to_epsg}"})
+        # if self._to_epsg is not None:
+        #     gdf = gdf.to_crs(epsg=self._to_epsg)
         return gdf

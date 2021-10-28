@@ -3,9 +3,9 @@ from gtfs_builder.gtfs_core.core import OpenGtfs
 
 class Shapes(OpenGtfs):
 
-    def __init__(self, geo_tools_core, input_file="shapes.txt"):
+    def __init__(self, geo_tools_core, input_file="shapes.txt", use_original_epsg=False):
 
-        super(Shapes, self).__init__(geo_tools_core, input_file)
+        super(Shapes, self).__init__(geo_tools_core, input_file, use_original_epsg)
 
         self.__build_vehicule_trace()
 

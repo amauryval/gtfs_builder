@@ -51,12 +51,12 @@ class DfOptimizer:
             if not self._df[col].isnull().all():
 
                 if not isinstance(self._df[col].dtype, object):
-
-                    is_integer_column = self._check_if_column_contains_integers(col)
-                    if is_integer_column:
-                        self._format_integer_column(col)
-                    else:
-                        self._format_float_column(col)
+                    pass
+                    # is_integer_column = self._check_if_column_contains_integers(col)
+                    # if is_integer_column:
+                    #     self._format_integer_column(col)
+                    # else:
+                    #     self._format_float_column(col)
 
                 elif self._df[col].dtype == object:
                     if not self._convert_to_datetime(col):

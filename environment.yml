@@ -1,0 +1,10 @@
+name: gtfs_builder
+channels:
+  - conda-forge
+  - anaconda
+  - amauryval
+dependencies:
+  - python=3.9
+  - panel=0.12.4
+  - spatialpandas=0.4.3
+  - geolib=0.28.2
