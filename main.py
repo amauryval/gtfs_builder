@@ -39,6 +39,10 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
 
+from dotenv import load_dotenv
+
+from spatialpandas import GeoSeries, GeoDataFrame
+
 
 def run_thread(processes, workers_number=4):
     # TODO add to geolib
@@ -87,7 +91,7 @@ def group_by_similarity(data):
         common_id = str(uuid.uuid4())
 
         if trip_id not in output:
-            data_not_proceed = data.loc[data.start_end_stops != None]
+            data_not_proceed = data.loc[data.start_end_stops is not None]
             data_to_procceed = data_not_proceed.loc[
                 data_not_proceed["values_frozen"].apply(lambda x: len(x.intersection(values_frozen)) >= 2)
             ]["trip_id"]
@@ -127,18 +131,21 @@ class GtfsFormater(GeoLib):
     __MAIN_DB_SCHEMA = "gtfs_data"
     __PG_EXTENSIONS = ["btree_gist", "postgis"]
 
-    def __init__(self, credentials, overwriting_db_mode, transport_modes: Optional[List[str]] = None, days: Optional[List[str]] = None):
+    def __init__(self, credentials, overwriting_db_mode, transport_modes: Optional[List[str]] = None, days: Optional[List[str]] = None, mode: str = "db"):
         super().__init__()
 
         self._credentials = credentials
         self._overwriting_db_mode = overwriting_db_mode
         self._transport_modes = transport_modes
         self._days = days
+        self._mode = mode
 
         self.run()
 
     def run(self):
-        self._prepare_db()
+        if self._mode == "db":
+            self._prepare_db()
+
         self._prepare_inputs()
         self._build_stops_data()
         self._build_path()
@@ -294,26 +301,33 @@ class GtfsFormater(GeoLib):
             data = gpd.GeoDataFrame(data_completed)
             data = data.sort_values("date_time")
 
-            stops_times_data = data[["stop_code", "validity_range", "line_id", "trip_id", "direction_id"]]
+            if self._mode == "parquet":
+                data.drop("date_time", inplace=True, axis=1)
+                data_sp = GeoDataFrame(data)
+                data_sp.to_parquet("stops.parq")
+                assert False
 
-            stops_data = data.groupby(["stop_code"]).agg({
-                "stop_code": "first",
-                "geometry": "first",
-                "stop_name": "first",
-                "pos": "first",
-                "stop_type": "first",
-                "line_name": "first",
-                "line_name_short": "first",
-            }).sort_values("pos")
+            elif self._mode == "db":
 
-            _, engine = self.get_db_session()
+                stops_times_data = data[["stop_code", "validity_range", "line_id", "trip_id", "direction_id"]]
+                stops_data = data.groupby(["stop_code"]).agg({
+                    "stop_code": "first",
+                    "geometry": "first",
+                    "stop_name": "first",
+                    "pos": "first",
+                    "stop_type": "first",
+                    "line_name": "first",
+                    "line_name_short": "first",
+                }).sort_values("pos")
 
-            dict_data = self.df_to_dicts_list(stops_data, 4326)
-            self.dict_list_to_db(engine, dict_data, self.__MAIN_DB_SCHEMA, StopsGeom.__table__.name)
+                _, engine = self.get_db_session()
 
-            dict_data = self.df_to_dicts_list(stops_times_data)
-            self.dict_list_to_db(engine, dict_data, self.__MAIN_DB_SCHEMA, StopsTimesValues.__table__.name)
-            assert False
+                dict_data = self.df_to_dicts_list(stops_data, 4326)
+                self.dict_list_to_db(engine, dict_data, self.__MAIN_DB_SCHEMA, StopsGeom.__table__.name)
+
+                dict_data = self.df_to_dicts_list(stops_times_data)
+                self.dict_list_to_db(engine, dict_data, self.__MAIN_DB_SCHEMA, StopsTimesValues.__table__.name)
+                assert False
 
     def compute_line(self, line, stops_on_day, date):
         input_line_id = line["shape_id"]
@@ -456,7 +470,12 @@ class GtfsFormater(GeoLib):
                 dates_mapped = [element["date_time"] for element in trip_stops_computed]
                 dates_mapped.append(end_date)
                 for enum, feature_date in enumerate(list(zip(dates_mapped, dates_mapped[1:]))):
-                    trip_stops_computed[enum]["validity_range"] = self._format_validity_range(*feature_date)
+                    if self._mode == "db":
+                        trip_stops_computed[enum]["validity_range"] = self._format_validity_range(*feature_date)
+                    elif self._mode == "parquet":
+                        trip_stops_computed[enum]["start_date"] = feature_date[0].timestamp()
+                        trip_stops_computed[enum]["end_date"] = feature_date[-1].timestamp()
+
                 start_stops = last_stops
 
         return trip_stops_computed
@@ -494,6 +513,10 @@ class GtfsFormater(GeoLib):
 
 
 if __name__ == '__main__':
+
+    load_dotenv(".gtfs.env")
+
+
     input_db = {
         "credentials": {
             "host": "127.0.0.1",
@@ -504,11 +527,13 @@ if __name__ == '__main__':
         },
         "overwriting_data_mode": "full",
         "transport_modes": ["tramway", "metro"],
-        "days": ["friday"]
+        "days": ["friday"],
+        "mode": "parquet"  # "db"
     }
     GtfsFormater(
         input_db["credentials"],
         input_db["overwriting_data_mode"],
         input_db["transport_modes"],
-        input_db["days"]
+        input_db["days"],
+        input_db["mode"]
     )
