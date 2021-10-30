@@ -35,6 +35,45 @@ from gtfs_builder.gtfs_db.stops import StopsGeom
 from gtfs_builder.gtfs_db.stops_times import StopsTimesValues
 
 
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import as_completed
+
+
+def run_thread(processes, workers_number=4):
+    # TODO add to geolib
+
+    with ThreadPoolExecutor(max_workers=workers_number) as executor:
+
+        executions = []
+        for process in processes:
+            if isinstance(process, list):
+                executions.append(executor.submit(*process))
+            else:
+                executions.append(executor.submit(process))
+        # to return exceptions
+        return [
+            exe.result()
+            for exe in as_completed(executions)
+        ]
+
+def run_process(processes, workers_number=4):
+    # TODO add to geolib
+
+    with ProcessPoolExecutor(max_workers=workers_number) as executor:
+
+        executions = []
+        for process in processes:
+            if isinstance(process, list):
+                executions.append(executor.submit(*process))
+            else:
+                executions.append(executor.submit(process))
+        # to return exceptions
+        return [
+            exe.result()
+            for exe in as_completed(executions)
+        ]
+
 
 def group_by_similarity(data):
     import uuid
@@ -70,7 +109,7 @@ class GtfsFormater(GeoLib):
     __SHAPES_FILE_CREATED_NAME ="shapes.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips.txt"
 
-    __SUB_STOPS_RESOLUTION = 5
+    __SUB_STOPS_RESOLUTION = 10
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -113,17 +152,20 @@ class GtfsFormater(GeoLib):
             extensions=self.__PG_EXTENSIONS,
             overwrite=False
         )
-        self._session = db_sessions["session"]
-        self._engine = db_sessions["engine"]
+        engine = db_sessions["engine"]
         schemas = Base.metadata._schemas
         for schema in schemas:
-            self.init_schema(self._engine, schema)
-        Base.metadata.drop_all(self._engine)
-        Base.metadata.create_all(self._engine)
+            self.init_schema(engine, schema)
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
 
         tables = [table.fullname for table in Base.metadata.sorted_tables]
         tables_str = ', '.join(tables)
         self.logger.info(f'({len(tables)}) tables  created: {tables_str}')
+
+    def get_db_session(self):
+        session, engine = self.sqlalchemy_connection(**self._credentials)
+        return session, engine
 
     def _prepare_inputs(self):
         self._stop_times_data = StopsTimes(self).data
@@ -235,22 +277,21 @@ class GtfsFormater(GeoLib):
             lines_on_day = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_on_day["shape_id"].to_list())].copy()
 
             self.logger.info(f">>> WORKING DAY - {start_date_day} {date} - {lines_on_day.shape[0]} line(s) day found")
-            line_trip_ids_stops_computed = []
+            self._line_trip_ids_stops_computed = []
 
-            for index_line, line in enumerate(lines_on_day.itertuples()):
+            processes = [
+                [self.compute_line, line, stops_on_day, date]
+                for line in lines_on_day.to_dict('records')
+            ]
+            res = run_process(processes)
+            # for line in lines_on_day.itertuples():
+            #     self.compute_line(line, stops_on_day, date)
+            self.logger.info(f"{len(res)}")
 
-                input_line_id = line.shape_id
-                line_stops = self._get_stops_line(input_line_id, stops_on_day)
+            import itertools
+            data_completed = itertools.chain(*res)
 
-                trips_to_proceed = set(line_stops["trip_id"].to_list())
-                for trip_id in trips_to_proceed:
-
-                    trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
-
-                    trip_stops_computed = self._build_interpolation_stops_on_trip(date, trip_id, trip_stops, line)
-                    line_trip_ids_stops_computed.extend(trip_stops_computed)
-
-            data = gpd.GeoDataFrame(line_trip_ids_stops_computed)
+            data = gpd.GeoDataFrame(data_completed)
             data = data.sort_values("date_time")
 
             stops_times_data = data[["stop_code", "validity_range", "line_id", "trip_id", "direction_id"]]
@@ -265,18 +306,32 @@ class GtfsFormater(GeoLib):
                 "line_name_short": "first",
             }).sort_values("pos")
 
-            # data = self.gdf_design_checker(
-            #     self._engine,
-            #     self.__MAIN_DB_SCHEMA,
-            #     StopsGeom.__table__.name,
-            #     stops_data,
-            #     4326
-            # )
+            _, engine = self.get_db_session()
+
             dict_data = self.df_to_dicts_list(stops_data, 4326)
-            self.dict_list_to_db(self._engine, dict_data, self.__MAIN_DB_SCHEMA, StopsGeom.__table__.name)
+            self.dict_list_to_db(engine, dict_data, self.__MAIN_DB_SCHEMA, StopsGeom.__table__.name)
 
             dict_data = self.df_to_dicts_list(stops_times_data)
-            self.dict_list_to_db(self._engine, dict_data, self.__MAIN_DB_SCHEMA, StopsTimesValues.__table__.name)
+            self.dict_list_to_db(engine, dict_data, self.__MAIN_DB_SCHEMA, StopsTimesValues.__table__.name)
+            assert False
+
+    def compute_line(self, line, stops_on_day, date):
+        input_line_id = line["shape_id"]
+        line_stops = self._get_stops_line(input_line_id, stops_on_day)
+
+        trips_to_proceed = set(line_stops["trip_id"].to_list())
+        for trip_id in trips_to_proceed:
+            self.compute_trip(date, line, line_stops, trip_id)
+
+        return self._line_trip_ids_stops_computed
+
+
+
+    def compute_trip(self, date, line, line_stops, trip_id):
+        trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
+
+        trip_stops_computed = self._build_interpolation_stops_on_trip(date, trip_id, trip_stops, line)
+        self._line_trip_ids_stops_computed.extend(trip_stops_computed)
 
     def _get_stops_line(self, input_line_id, stops_on_day):
 
@@ -309,7 +364,7 @@ class GtfsFormater(GeoLib):
 
     def _build_interpolation_stops_on_trip(self, date, trip_id, trip_stops, line):
 
-        line_geom_remaining = line.geometry
+        line_geom_remaining = line["geometry"]
         import uuid
 
         DEFAULT_VALUE_START_STOP = uuid.uuid4()
@@ -324,7 +379,7 @@ class GtfsFormater(GeoLib):
                 "line_name": stop["route_long_name"],
                 "line_name_short": stop["route_short_name"],
                 "direction_id": stop["direction_id"],
-                "line_id": line.shape_id,
+                "line_id": line["shape_id"],
                 "trip_id": trip_id,
             }
 
