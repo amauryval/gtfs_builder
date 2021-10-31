@@ -11,8 +11,7 @@ from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy import func
 
-from datetime import datetime
-
+import datetime
 
 def sql_query_to_list(query):
     return [
@@ -26,15 +25,14 @@ def sql_query_to_list(query):
 
 class GtfsMain(GeoLib):
 
-    def __init__(self, session):
+    def __init__(self):
         super().__init__(logger_name=None)
 
+    def nodes_by_date_from_db(self, session, current_date):
         self._session = session
+        StopsGeom.set_session(session)
+        StopsTimesValues.set_session(session)
 
-        StopsGeom.set_session(self._session)
-        StopsTimesValues.set_session(self._session)
-
-    def nodes_by_date(self, current_date):
         current_date = datetime.fromisoformat(current_date)
 
         current_nodes_properties = StopsGeom.query(
@@ -86,3 +84,10 @@ class GtfsMain(GeoLib):
             features
         )
         return geojson_features
+
+    def nodes_by_date_from_parquet(self, session, current_date):
+        current_date = datetime.datetime.fromisoformat(current_date)
+        end_date = current_date + datetime.timedelta(0, 15)
+        filtered_data = session.loc[(session["start_date"] > current_date.timestamp()) & (session["end_date"] <= end_date.timestamp())]
+
+        return filtered_data.to_geopandas().__geo_interface__

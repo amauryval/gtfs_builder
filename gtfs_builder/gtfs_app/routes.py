@@ -8,7 +8,7 @@ import traceback
 from gtfs_builder.gtfs_app.main import GtfsMain
 
 
-def gtfs_routes(session):
+def gtfs_routes(session, mode_from):
 
     gtfs_routes = Blueprint(
         'gtfs',
@@ -26,7 +26,10 @@ def gtfs_routes(session):
         }
 
         try:
-            input_data = GtfsMain(session).nodes_by_date(arg_keys["current_date"])
+            if mode_from == "db":
+                input_data = GtfsMain().nodes_by_date_from_db(session, arg_keys["current_date"])
+            elif mode_from == "parquet":
+                input_data = GtfsMain().nodes_by_date_from_parquet(session, arg_keys["current_date"])
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
