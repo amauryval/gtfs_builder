@@ -528,7 +528,7 @@ if __name__ == '__main__':
         "overwriting_data_mode": "full",
         "transport_modes": ["tramway", "metro"],
         "days": ["friday"],
-        "mode": "parquet"  # "db"
+        "mode": os.environ["from"]  # "db"
     }
     GtfsFormater(
         input_db["credentials"],
