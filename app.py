@@ -10,6 +10,8 @@ from gtfs_builder.gtfs_app.routes import gtfs_routes
 from geolib import GeoLib
 
 import spatialpandas.io as io
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session
 
 load_dotenv(".gtfs.env")
 
@@ -32,7 +34,7 @@ if from_mode == "db":
     }
 
     session, engine = GeoLib().sqlalchemy_connection(**credentials)
-    # to use parallel queries
+    #to use parallel queries
     # session_factory = sessionmaker(bind=engine)
     # session = scoped_session(session_factory)
 elif from_mode == "parquet":
@@ -44,4 +46,4 @@ CORS(app)
 app.register_blueprint(gtfs_routes(session, from_mode))
 
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=7000)
+    app.run(host='0.0.0.0', port=7000, threaded=True)
