@@ -9,6 +9,7 @@ from gtfs_builder.gtfs_app.main import GtfsMain
 
 from gtfs_builder.gtfs_db.stops import StopsGeom
 from gtfs_builder.gtfs_db.stops_times import StopsTimesValues
+import os
 
 
 def gtfs_routes(session, mode_from):
@@ -22,18 +23,34 @@ def gtfs_routes(session, mode_from):
     StopsGeom.set_session(session)
     StopsTimesValues.set_session(session)
 
+    @gtfs_routes.route("/stop", methods=['GET'])
+    def set_stop_run():
+        print("prouAAAAAAAAAAAAt")
+        os.environ['ROUTE_RUNNING_STATUS'] = 'stop'
+        return jsonify(os.environ['ROUTE_RUNNING_STATUS'])
+
+    @gtfs_routes.route("/start", methods=['GET'])
+    def set_start_run():
+        print("oKAY")
+        os.environ['ROUTE_RUNNING_STATUS'] = 'start'
+        return jsonify(os.environ['ROUTE_RUNNING_STATUS'])
+
     @gtfs_routes.get("/nodes_by_date")
     def nodes_by_date():
-
+        print("aaa")
         arg_keys = {
             "current_date": request.args.get("current_date", type=str),
         }
 
         try:
+
             if mode_from == "db":
                 input_data = GtfsMain(session, StopsGeom, StopsTimesValues).nodes_by_date_from_db(arg_keys["current_date"])
             elif mode_from == "parquet":
                 input_data = GtfsMain(session).nodes_by_date_from_parquet(arg_keys["current_date"])
+
+            if os.environ['ROUTE_RUNNING_STATUS'] == "stop":
+                return jsonify(os.environ['ROUTE_RUNNING_STATUS'])
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
