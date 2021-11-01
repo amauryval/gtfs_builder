@@ -287,14 +287,15 @@ class GtfsFormater(GeoLib):
             self.logger.info(f">>> WORKING DAY - {start_date_day} {date} - {lines_on_day.shape[0]} line(s) day found")
             self._line_trip_ids_stops_computed = []
 
-            processes = [
-                [self.compute_line, line, stops_on_day, date]
-                for line in lines_on_day.to_dict('records')
-            ]
-            res = run_process(processes)
-            # for line in lines_on_day.itertuples():
-            #     self.compute_line(line, stops_on_day, date)
-            self.logger.info(f"{len(res)}")
+            # processes = [
+            #     [self.compute_line, line, stops_on_day, date]
+            #     for line in lines_on_day.to_dict('records')
+            # ]
+            # res = run_process(processes)
+            # self.logger.info(f"{len(res)}")
+
+            for line in lines_on_day.to_dict('records'):
+                self.compute_line(line, stops_on_day, date)
 
             import itertools
             data_completed = itertools.chain(*res)
@@ -339,8 +340,6 @@ class GtfsFormater(GeoLib):
             self.compute_trip(date, line, line_stops, trip_id)
 
         return self._line_trip_ids_stops_computed
-
-
 
     def compute_trip(self, date, line, line_stops, trip_id):
         trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]

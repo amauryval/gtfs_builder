@@ -21,6 +21,7 @@ def sql_query_to_list(query):
 
 
 class GtfsMain(GeoLib):
+    __DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     def __init__(self, session, engine=None, stops_geom_table=None, stops_times_values_table=None):
         super().__init__(logger_name=None)
@@ -31,14 +32,14 @@ class GtfsMain(GeoLib):
         self.stops_geom_table = stops_geom_table
         self.stops_times_values_table = stops_times_values_table
 
-    def dates_range_from_parquet(self):
-        date_format = "%Y-%m-%d %H:%M:%S"
+    def context_data_from_parquet(self):
         return {
-            "start_date": datetime.datetime.fromtimestamp(min(self._session["start_date"])).strftime(date_format),
-            "end_date": datetime.datetime.fromtimestamp(max(self._session["end_date"])).strftime(date_format),
+            "data_bounds": self._session.geometry.total_bounds,
+            "start_date": datetime.datetime.fromtimestamp(min(self._session["start_date"])).strftime(self.__DATE_FORMAT),
+            "end_date": datetime.datetime.fromtimestamp(max(self._session["end_date"])).strftime(self.__DATE_FORMAT),
         }
 
-    def dates_range_from_db(self):
+    def context_data_from_db(self):
 
         start_date = self.stops_times_values_table.query(
             func.to_char(func.min(func.lower(self.stops_times_values_table.validity_range)), "YYYY-MM-DD HH12:MI:SS").label("start_date")
@@ -99,6 +100,7 @@ class GtfsMain(GeoLib):
         current_date = datetime.datetime.fromisoformat(current_date).timestamp()
         filtered_data = self._session.loc[(self._session["start_date"] <= current_date) & (self._session["end_date"] >= current_date)]
         filtered_data = filtered_data[["stop_code", "x", "y", "line_name_short"]]
+
         return {
-            "data_geojson": filtered_data.to_dict('records')
+            "data_geojson": filtered_data.compute().to_dict("records")
         }

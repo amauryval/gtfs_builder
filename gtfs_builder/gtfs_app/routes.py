@@ -36,9 +36,6 @@ def gtfs_routes(session, engine, mode_from):
             elif mode_from == "parquet":
                 input_data = GtfsMain(session).nodes_by_date_from_parquet(arg_keys["current_date"])
 
-            if os.environ['ROUTE_RUNNING_STATUS'] == "stop":
-                return jsonify(os.environ['ROUTE_RUNNING_STATUS'])
-
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
 
@@ -52,9 +49,9 @@ def gtfs_routes(session, engine, mode_from):
 
         try:
             if mode_from == "db":
-                input_data = GtfsMain(session, engine, StopsGeom, StopsTimesValues).dates_range_from_db()
+                input_data = GtfsMain(session, engine, StopsGeom, StopsTimesValues).context_data_from_db()
             elif mode_from == "parquet":
-                input_data = GtfsMain(session).dates_range_from_parquet()
+                input_data = GtfsMain(session).context_data_from_parquet()
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')

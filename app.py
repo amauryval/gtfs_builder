@@ -9,14 +9,13 @@ from gtfs_builder.gtfs_app.routes import gtfs_routes
 
 from geolib import GeoLib
 
-import spatialpandas.io as io
+from spatialpandas import io
+
+import re
 
 
 load_dotenv(".gtfs.env")
 
-
-
-import re
 
 def str_to_dict_from_regex(str_value: str, regex: str):
     r = re.compile(regex)
@@ -38,7 +37,8 @@ if from_mode == "db":
     # session_factory = sessionmaker(bind=engine)
     # session = scoped_session(session_factory)
 elif from_mode == "parquet":
-    session = io.read_parquet("stops.parq")
+
+    session = io.read_parquet_dask("stops.parq")
 
 
 app = Flask(__name__)
@@ -47,7 +47,6 @@ app.register_blueprint(gtfs_routes(session, engine, from_mode))
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_SORT_KEYS'] = False
 
-os.environ['ROUTE_RUNNING_STATUS'] = 'start'
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=7000, threaded=False)
