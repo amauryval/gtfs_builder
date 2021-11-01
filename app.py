@@ -44,6 +44,8 @@ elif from_mode == "parquet":
 app = Flask(__name__)
 CORS(app)
 app.register_blueprint(gtfs_routes(session, from_mode))
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+app.config['JSON_SORT_KEYS'] = False
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=7000, threaded=True)

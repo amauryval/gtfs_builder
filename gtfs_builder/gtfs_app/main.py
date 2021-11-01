@@ -62,10 +62,10 @@ class GtfsMain(GeoLib):
 
         current_nodes_properties = StopsGeom.query(
             StopsTimesValues.stop_code.label("stop_code"),
-            StopsGeom.stop_name.label("stop_name"),
-            StopsGeom.stop_type.label("stop_type"),
-            StopsGeom.line_name.label("line_name"),
-            StopsTimesValues.direction_id.label("direction_id"),
+            # StopsGeom.stop_name.label("stop_name"),
+            # StopsGeom.stop_type.label("stop_type"),
+            # StopsGeom.line_name.label("line_name"),
+            # StopsTimesValues.direction_id.label("direction_id"),
             StopsGeom.line_name_short.label("line_name_short"),
             # StopsTimesValues.validity_range.label("validity_range"),
         ).filter(
@@ -113,11 +113,11 @@ class GtfsMain(GeoLib):
         return geojson_features
 
     def nodes_by_date_from_parquet(self, session, current_date):
-        current_date = datetime.datetime.fromisoformat(current_date)
+        current_date = datetime.datetime.fromisoformat(current_date).timestamp()
         # end_date = current_date + datetime.timedelta(0, 30)
-        # filtered_data = session.loc[(session["start_date"] > current_date.timestamp()) & (session["end_date"] <= end_date.timestamp())]
-        filtered_data = session.loc[(session["start_date"] == current_date.timestamp())]
-
+        filtered_data = session.loc[(session["start_date"] <= current_date) & (session["end_date"] >= current_date)]
+        # filtered_data = session.loc[(session["start_date"] == current_date.timestamp())]
+        filtered_data = filtered_data[["stop_code", "geometry", "line_name_short"]]
         return {
             "data_geojson": filtered_data.to_geopandas().__geo_interface__
         }
