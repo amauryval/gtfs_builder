@@ -102,5 +102,5 @@ class GtfsMain(GeoLib):
         filtered_data = filtered_data[["stop_code", "x", "y", "line_name_short"]]
 
         return {
-            "data_geojson": filtered_data.compute().to_dict("records")
+            "data_geojson": filtered_data.to_dict("records")
         }
