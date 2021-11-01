@@ -23,6 +23,7 @@ def str_to_dict_from_regex(str_value: str, regex: str):
     return [m.groupdict() for m in r.finditer(str_value)]
 
 from_mode = os.environ.get("FROM")
+engine = None
 if from_mode == "db":
     credentials = {
         **str_to_dict_from_regex(
@@ -40,10 +41,9 @@ elif from_mode == "parquet":
     session = io.read_parquet("stops.parq")
 
 
-
 app = Flask(__name__)
 CORS(app)
-app.register_blueprint(gtfs_routes(session, from_mode))
+app.register_blueprint(gtfs_routes(session, engine, from_mode))
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_SORT_KEYS'] = False
 

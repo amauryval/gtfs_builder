@@ -42,7 +42,7 @@ from concurrent.futures import as_completed
 
 from dotenv import load_dotenv
 
-from spatialpandas import GeoSeries, GeoDataFrame
+from spatialpandas import GeoDataFrame
 
 
 def run_thread(processes, workers_number=4):
@@ -114,7 +114,7 @@ class GtfsFormater(GeoLib):
     __SHAPES_FILE_CREATED_NAME ="shapes.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips.txt"
 
-    __SUB_STOPS_RESOLUTION = 10
+    __SUB_STOPS_RESOLUTION = 20
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -475,6 +475,9 @@ class GtfsFormater(GeoLib):
                         trip_stops_computed[enum]["validity_range"] = self._format_validity_range(*feature_date)
                     elif self._mode == "parquet":
                         trip_stops_computed[enum]["geometry"] = shapely.wkt.loads(shapely.wkt.dumps(trip_stops_computed[enum]["geometry"], rounding_precision=3))
+                        geom = shapely.wkt.loads(shapely.wkt.dumps(trip_stops_computed[enum]["geometry"], rounding_precision=3))
+                        trip_stops_computed[enum]["x"] = geom.x
+                        trip_stops_computed[enum]["y"] = geom.y
                         trip_stops_computed[enum]["start_date"] = feature_date[0].timestamp()
                         trip_stops_computed[enum]["end_date"] = feature_date[-1].timestamp()
 
