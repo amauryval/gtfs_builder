@@ -5,6 +5,7 @@ from typing import Optional
 import os
 import datetime
 
+import shapely
 from geolib import GeoLib
 from itertools import chain
 import numpy as np
@@ -473,6 +474,7 @@ class GtfsFormater(GeoLib):
                     if self._mode == "db":
                         trip_stops_computed[enum]["validity_range"] = self._format_validity_range(*feature_date)
                     elif self._mode == "parquet":
+                        trip_stops_computed[enum]["geometry"] = shapely.wkt.loads(shapely.wkt.dumps(trip_stops_computed[enum]["geometry"], rounding_precision=3))
                         trip_stops_computed[enum]["start_date"] = feature_date[0].timestamp()
                         trip_stops_computed[enum]["end_date"] = feature_date[-1].timestamp()
 

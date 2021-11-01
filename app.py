@@ -12,6 +12,7 @@ from geolib import GeoLib
 import spatialpandas.io as io
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import scoped_session
+import uvicorn
 
 load_dotenv(".gtfs.env")
 
@@ -41,6 +42,7 @@ elif from_mode == "parquet":
     session = io.read_parquet("stops.parq")
 
 
+
 app = Flask(__name__)
 CORS(app)
 app.register_blueprint(gtfs_routes(session, from_mode))
@@ -48,4 +50,4 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_SORT_KEYS'] = False
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=7000, threaded=True)
+    app.run(host='0.0.0.0', port=7000, threaded=True, debug=True)

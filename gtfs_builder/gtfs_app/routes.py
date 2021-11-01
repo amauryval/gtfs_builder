@@ -7,6 +7,9 @@ import traceback
 
 from gtfs_builder.gtfs_app.main import GtfsMain
 
+from gtfs_builder.gtfs_db.stops import StopsGeom
+from gtfs_builder.gtfs_db.stops_times import StopsTimesValues
+
 
 def gtfs_routes(session, mode_from):
 
@@ -16,6 +19,8 @@ def gtfs_routes(session, mode_from):
         template_folder='templates',
         url_prefix='/api/v1/gtfs'
     )
+    StopsGeom.set_session(session)
+    StopsTimesValues.set_session(session)
 
     @gtfs_routes.get("/nodes_by_date")
     def nodes_by_date():
@@ -26,9 +31,9 @@ def gtfs_routes(session, mode_from):
 
         try:
             if mode_from == "db":
-                input_data = GtfsMain().nodes_by_date_from_db(session, arg_keys["current_date"])
+                input_data = GtfsMain(session, StopsGeom, StopsTimesValues).nodes_by_date_from_db(arg_keys["current_date"])
             elif mode_from == "parquet":
-                input_data = GtfsMain().nodes_by_date_from_parquet(session, arg_keys["current_date"])
+                input_data = GtfsMain(session).nodes_by_date_from_parquet(arg_keys["current_date"])
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
@@ -43,9 +48,9 @@ def gtfs_routes(session, mode_from):
 
         try:
             if mode_from == "db":
-                input_data = GtfsMain().dates_range_from_db(session)
+                input_data = GtfsMain(session, StopsGeom, StopsTimesValues).dates_range_from_db()
             elif mode_from == "parquet":
-                input_data = GtfsMain().dates_range_from_parquet(session)
+                input_data = GtfsMain(session).dates_range_from_parquet()
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')

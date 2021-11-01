@@ -2,9 +2,6 @@
 
 from geolib import GeoLib
 
-from gtfs_builder.gtfs_db.stops import StopsGeom
-from gtfs_builder.gtfs_db.stops_times import StopsTimesValues
-
 from sqlalchemy import and_
 
 from sqlalchemy.sql.expression import literal
@@ -23,29 +20,31 @@ def sql_query_to_list(query):
     ]
 
 
-class GtfsMain(GeoLib):
+class GtfsMain:
 
-    def __init__(self):
-        super().__init__(logger_name=None)
+    def __init__(self, session, stops_geom_table=None, stops_times_values_table=None):
+        # super().__init__(logger_name=None)
 
-    def dates_range_from_parquet(self, session):
-        date_format = "%Y-%m-%d %H:%M:%S"
-        return {
-            "start_date": datetime.datetime.fromtimestamp(min(session["start_date"])).strftime(date_format),
-            "end_date": datetime.datetime.fromtimestamp(max(session["end_date"])).strftime(date_format),
-        }
-
-    def dates_range_from_db(self, session):
         self._session = session
 
-        StopsTimesValues.set_session(session)
+        self.stops_geom_table = stops_geom_table
+        self.stops_times_values_table = stops_times_values_table
 
-        start_date = StopsTimesValues.query(
-            func.to_char(func.min(func.lower(StopsTimesValues.validity_range)), "YYYY-MM-DD HH12:MI:SS").label("start_date")
+    def dates_range_from_parquet(self):
+        date_format = "%Y-%m-%d %H:%M:%S"
+        return {
+            "start_date": datetime.datetime.fromtimestamp(min(self._session["start_date"])).strftime(date_format),
+            "end_date": datetime.datetime.fromtimestamp(max(self._session["end_date"])).strftime(date_format),
+        }
+
+    def dates_range_from_db(self):
+
+        start_date = self.stops_times_values_table.query(
+            func.to_char(func.min(func.lower(self.stops_times_values_table.validity_range)), "YYYY-MM-DD HH12:MI:SS").label("start_date")
         )
 
-        end_date = StopsTimesValues.query(
-            func.to_char(func.max(func.upper(StopsTimesValues.validity_range)), "YYYY-MM-DD HH12:MI:SS").label("end_date")
+        end_date = self.stops_times_values_table.query(
+            func.to_char(func.max(func.upper(self.stops_times_values_table.validity_range)), "YYYY-MM-DD HH12:MI:SS").label("end_date")
         )
 
         return {
@@ -53,35 +52,31 @@ class GtfsMain(GeoLib):
             "end_date": sql_query_to_list(end_date)[0]["end_date"],
         }
 
-    def nodes_by_date_from_db(self, session, current_date):
-        self._session = session
-        StopsGeom.set_session(session)
-        StopsTimesValues.set_session(session)
-
+    def nodes_by_date_from_db(self, current_date):
         current_date = datetime.datetime.fromisoformat(current_date)
 
-        current_nodes_properties = StopsGeom.query(
-            StopsTimesValues.stop_code.label("stop_code"),
+        current_nodes_properties = self.stops_geom_table.query(
+            self.stops_times_values_table.stop_code.label("stop_code"),
             # StopsGeom.stop_name.label("stop_name"),
             # StopsGeom.stop_type.label("stop_type"),
             # StopsGeom.line_name.label("line_name"),
             # StopsTimesValues.direction_id.label("direction_id"),
-            StopsGeom.line_name_short.label("line_name_short"),
+            self.stops_geom_table.line_name_short.label("line_name_short"),
             # StopsTimesValues.validity_range.label("validity_range"),
         ).filter(
             and_(
-                StopsGeom.stop_code == StopsTimesValues.stop_code,
-                StopsTimesValues.validity_range.op('@>')(current_date)
+                self.stops_geom_table.stop_code == self.stops_times_values_table.stop_code,
+                self.stops_times_values_table.validity_range.op('@>')(current_date)
             )
         )
 
         stop_times_found = current_nodes_properties.subquery('features')
-        current_nodes_geometry = StopsGeom.query(
-            StopsGeom.stop_code.label("stop_code"),
-            StopsGeom.geometry.label("geometry")
+        current_nodes_geometry = self.stops_geom_table.query(
+            self.stops_geom_table.stop_code.label("stop_code"),
+            func.ST_ReducePrecision(self.stops_geom_table.geometry, 0.001).label("geometry")
         ).filter(
             # and_(
-                StopsGeom.stop_code == stop_times_found.c.stop_code
+                self.stops_geom_table.stop_code == stop_times_found.c.stop_code
 
                 # StopsTimesValues.validity_range.op('@>')(current_date)
             # )
@@ -112,11 +107,9 @@ class GtfsMain(GeoLib):
         )
         return geojson_features
 
-    def nodes_by_date_from_parquet(self, session, current_date):
+    def nodes_by_date_from_parquet(self, current_date):
         current_date = datetime.datetime.fromisoformat(current_date).timestamp()
-        # end_date = current_date + datetime.timedelta(0, 30)
-        filtered_data = session.loc[(session["start_date"] <= current_date) & (session["end_date"] >= current_date)]
-        # filtered_data = session.loc[(session["start_date"] == current_date.timestamp())]
+        filtered_data = self._session.loc[(self._session["start_date"] <= current_date) & (self._session["end_date"] >= current_date)]
         filtered_data = filtered_data[["stop_code", "geometry", "line_name_short"]]
         return {
             "data_geojson": filtered_data.to_geopandas().__geo_interface__
