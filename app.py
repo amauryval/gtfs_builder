@@ -37,8 +37,8 @@ if from_mode == "db":
     # session_factory = sessionmaker(bind=engine)
     # session = scoped_session(session_factory)
 elif from_mode == "parquet":
-
-    session = io.read_parquet("stops.parq")
+    #TODO check if file exists and file as input
+    session = io.read_parquet("moving_stops.parq")
 
 
 app = Flask(__name__)
