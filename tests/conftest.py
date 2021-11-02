@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 
 from spatialpandas import io
 
+from fixture.credentials import *
+
 load_dotenv(".gtfs.env")
 
 

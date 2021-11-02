@@ -7,43 +7,16 @@ from dotenv import load_dotenv
 
 from gtfs_builder.gtfs_app.routes import gtfs_routes
 
-from geolib import GeoLib
-
 from spatialpandas import io
-
-import re
 
 
 load_dotenv(".gtfs.env")
 
-
-def str_to_dict_from_regex(str_value: str, regex: str):
-    r = re.compile(regex)
-    return [m.groupdict() for m in r.finditer(str_value)]
-
-from_mode = os.environ.get("FROM")
-engine = None
-if from_mode == "db":
-    credentials = {
-        **str_to_dict_from_regex(
-            os.environ.get("ADMIN_DB_URL"),
-            ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
-        )[0],
-        **{"scoped_session": False}
-    }
-
-    session, engine = GeoLib().sqlalchemy_connection(**credentials)
-    #to use parallel queries
-    # session_factory = sessionmaker(bind=engine)
-    # session = scoped_session(session_factory)
-elif from_mode == "parquet":
-    #TODO check if file exists and file as input
-    session = io.read_parquet("moving_stops.parq")
-
+session = io.read_parquet(f"{os.environ['study_area_name']}_moving_stops.parq")
 
 app = Flask(__name__)
 CORS(app)
-app.register_blueprint(gtfs_routes(session, engine, from_mode))
+app.register_blueprint(gtfs_routes(session))
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_SORT_KEYS'] = False
 

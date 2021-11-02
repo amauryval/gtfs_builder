@@ -1,0 +1,59 @@
+{
+    "output_epsg": 2154,
+    "shapes.txt": {
+        "shape_id": "string",
+        "shape_pt_lat": "float",
+        "shape_pt_lon": "float",
+        "shape_pt_sequence": "int"
+    },
+    "stops.txt": {
+        "stop_id": "category",
+        "stop_code": "category",
+        "stop_name": "category",
+        "stop_lat": "float",
+        "stop_lon": "float",
+        "location_type": "string",
+        "stop_timezone": "string"
+    },
+    "trips.txt": {
+        "route_id": "string",
+        "service_id": "string",
+        "trip_id": "string",
+        "trip_short_name": "string",
+        "direction_id": "category",
+        "shape_id": "str"
+    },
+    "stop_times.txt": {
+        "trip_id": "string",
+        "arrival_time": "string",
+        "departure_time": "string",
+        "stop_id": "string",
+        "stop_sequence": "int",
+        "pickup_type": "string",
+        "drop_off_type": "string"
+    },
+    "calendar.txt": {
+        "service_id": "string",
+        "monday": "category",
+        "tuesday": "category",
+        "wednesday": "category",
+        "thursday": "category",
+        "friday": "category",
+        "saturday": "category",
+        "sunday": "category",
+        "start_date": "object",
+        "end_date": "object"
+    },
+    "routes.txt": {
+        "route_id": "category",
+        "agency_id": "category",
+        "route_short_name": "category",
+        "route_long_name": "category",
+        "route_desc": "string",
+        "route_type": "category",
+        "route_url": "string",
+        "route_color": "category",
+        "route_text_color": "string",
+        "route_sort_order": "string"
+    }
+}

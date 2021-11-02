@@ -12,7 +12,7 @@ from gtfs_builder.gtfs_db.stops_times import StopsTimesValues
 import os
 
 
-def gtfs_routes(session, engine, mode_from):
+def gtfs_routes(session):
 
     gtfs_routes = Blueprint(
         'gtfs',
@@ -31,10 +31,7 @@ def gtfs_routes(session, engine, mode_from):
 
         try:
 
-            if mode_from == "db":
-                input_data = GtfsMain(session, engine, StopsGeom, StopsTimesValues).nodes_by_date_from_db(arg_keys["current_date"])
-            elif mode_from == "parquet":
-                input_data = GtfsMain(session).nodes_by_date_from_parquet(arg_keys["current_date"])
+            input_data = GtfsMain(session).nodes_by_date_from_parquet(arg_keys["current_date"])
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
@@ -48,10 +45,7 @@ def gtfs_routes(session, engine, mode_from):
     def range_dates():
 
         try:
-            if mode_from == "db":
-                input_data = GtfsMain(session, engine, StopsGeom, StopsTimesValues).context_data_from_db()
-            elif mode_from == "parquet":
-                input_data = GtfsMain(session).context_data_from_parquet()
+            input_data = GtfsMain(session).context_data_from_parquet()
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')

@@ -19,10 +19,16 @@ class Routes(OpenGtfs):
 
     def __init__(self, geo_tools_core, transport_modes: Optional[List[str]] = None, input_file="routes.txt"):
 
-        super(Routes, self).__init__(geo_tools_core, input_file)
+        super(Routes, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file)
+
+        self._input_file = input_file
+
         self.__remap_route_type()
         if transport_modes is not None:
             self.__filter_by_route_types(transport_modes)
+
+        if self.is_df_empty(self._input_data):
+            raise ValueError(f"'{input_file}' is empty")
 
     def __remap_route_type(self):
         self._input_data.replace(
@@ -31,6 +37,8 @@ class Routes(OpenGtfs):
         )
 
     def __filter_by_route_types(self, transport_modes: List[str]):
-        self._input_data = self._input_data.loc[self._input_data["route_type"].isin(transport_modes)]
+        transport_mode_column = "route_type"
+        self._input_data = self._input_data.loc[self._input_data[transport_mode_column].isin(transport_modes)]
 
-
+        if self.is_df_empty(self._input_data):
+            raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({transport_mode_column}")

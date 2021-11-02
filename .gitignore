@@ -106,3 +106,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 /.gtfs.env
+*.parq
+*.7z

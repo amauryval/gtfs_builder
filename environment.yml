@@ -14,3 +14,4 @@ dependencies:
   - descartes=1.1.0
   - datashader=0.13.0
   - holoviews=1.14.6
+  - pytest=6.2.5

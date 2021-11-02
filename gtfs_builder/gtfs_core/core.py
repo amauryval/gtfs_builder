@@ -27,34 +27,32 @@ class OpenGtfs:
 
     """
 
-    _DEFAULT_JSON_ATTRS = json.loads(
-        open(os.path.join(os.getcwd(), "inputs_attrs.json")).read()
-    )
-    _DEFAULT_INPUT_DATA_PATH = os.path.join(
-        os.getcwd(),
-        "input_data"
-    )
     _SEPARATOR = ","
     _OUTPUT_ESPG_KEY = "output_epsg"
 
     _DEFAULT_EPSG = 4326
 
-    def __init__(self, geo_tools_core, input_file, use_original_epsg=False):
+    def __init__(self, geo_tools_core, path_data, input_file, use_original_epsg=False):
         """
 
         :param input_file: the name of the input file with its extension
         :type input_file: str
         """
         self.core = geo_tools_core
+        self._path_data = path_data
 
-        default_field_and_type = self._DEFAULT_JSON_ATTRS[input_file]
+        config_file_path = json.loads(
+            open(os.path.join(self._path_data, "inputs_attrs.json")).read()
+        )
+
+        default_field_and_type = config_file_path[input_file]
 
         self.core.logger.info(f"Opening {input_file}")
 
         self._input = input_file
 
         if not use_original_epsg:
-            self._to_epsg = self._DEFAULT_JSON_ATTRS[self._OUTPUT_ESPG_KEY]
+            self._to_epsg = config_file_path[self._OUTPUT_ESPG_KEY]
         else:
             self._to_epsg = None
 
@@ -71,9 +69,10 @@ class OpenGtfs:
             return
 
         default_path = os.path.join(
-                self._DEFAULT_INPUT_DATA_PATH,
+                self._path_data,
                 self._input,
         )
+
         if os.path.isfile(default_path):
             self.file_path = default_path
             return
@@ -123,7 +122,7 @@ class OpenGtfs:
         :return: dataframe
         :rtype: pandas.DataFrame
         """
-        if not self._is_df_empty(self._input_data):
+        if not self.is_df_empty(self._input_data):
             input_data = DfOptimizer(self._input_data)
             self.core.logger.info(input_data.memory_usage)
             return input_data.data
@@ -171,7 +170,7 @@ class OpenGtfs:
         )
         return gdf
 
-    def _is_df_empty(self, df):
+    def is_df_empty(self, df):
         """
         Check if dataframe is empty
 
@@ -182,7 +181,6 @@ class OpenGtfs:
         """
 
         if df.shape[0] == 0:
-            print("Dataframe is empty")
             return True
 
     def _reproject_gdf(self, gdf):
