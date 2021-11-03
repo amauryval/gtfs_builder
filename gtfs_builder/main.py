@@ -112,8 +112,8 @@ class GtfsFormater(GeoLib):
 
     __RAW_DATA_DIR = "../input_data"
 
-    __SHAPES_FILE_CREATED_NAME = "shapes.txt"
-    __TRIPS_FILE_UPDATED_NAME = "trips.txt"
+    __SHAPES_FILE_CREATED_NAME = "shapes_computed.txt"
+    __TRIPS_FILE_UPDATED_NAME = "trips_updated.txt"
 
     __SUB_STOPS_RESOLUTION = 25
     __DAYS_MAPPING = [
@@ -172,74 +172,59 @@ class GtfsFormater(GeoLib):
 
     def _prepare_inputs(self):
         self._stop_times_data = StopsTimes(self).data
+        self._stops_data = Stops(self).data
+        self._trips_data = Trips(self).data
 
-        try:
+        if not self.build_shape_data:
             self._shapes_data = Shapes(self).data
-            self._trips_data = Trips(self).data
-        except InputDataNotFound:
+        elif self.build_shape_data:
             self._compute_shapes_txt()
-            self._trips_data = Trips(self, self.__TRIPS_FILE_UPDATED_NAME).data
-            self._shapes_data = Shapes(self, self.__SHAPES_FILE_CREATED_NAME).data
-        finally:
-            self._stops_data = Stops(self).data
-            self._calendar_data = Calendar(self).data
-            self._routes_data = Routes(self, transport_modes=self._transport_modes).data
+            self._shapes_data = Shapes(self, input_file=self.__SHAPES_FILE_CREATED_NAME).data
+            self._trips_data = Trips(self, input_file=self.__TRIPS_FILE_UPDATED_NAME).data
+
+        self._calendar_data = Calendar(self).data
+        self._routes_data = Routes(self, transport_modes=self._transport_modes).data
 
     def _compute_shapes_txt(self):
         self.logger.info("Shapes computing...")
         stop_times_data = self._stop_times_data.sort_values(by=["trip_id", "stop_sequence"])
-        stop_ids_from_trip_id = stop_times_data.groupby("trip_id").agg(stop_id=('stop_id', list), stop_sequence=('stop_sequence', list)).reset_index()
-        stop_ids_from_trip_id["stop_count"] = stop_ids_from_trip_id["stop_id"].apply(lambda x: len(x))
-        stop_ids_from_trip_id.sort_values(by=["stop_count"], ascending=[True], inplace=True)
-
-        # find common path
-        data = group_by_similarity(stop_ids_from_trip_id)
-        # to df
-        data_to_df = pd.DataFrame.from_dict(data, orient='index', columns=['shape_id'])
-        # merge
-        stop_ids_from_trip_id.set_index("trip_id", inplace=True)
-        merged = stop_ids_from_trip_id.merge(data_to_df, left_index=True, right_index=True)
-        merged["stop_count"] = merged["stop_id"].apply(lambda x: len(x))
-        merged.sort_values(by=["shape_id", "stop_count"], ascending=[False, True], inplace=True)
-        merged = merged[["shape_id", "stop_id", "stop_count", "stop_sequence"]]
-        merged.reset_index(inplace=True)
-        merged.rename(columns={"index": "trip_id"}, inplace=True)
-
-        # find best geom path
-        grouped_by_shape_id = merged.groupby("shape_id").agg(
-            {
-                "trip_id": "first",
-                "stop_id": "first",
-                "stop_count": "max",
-                "stop_sequence": "first"
-            }
+        stop_times_data = stop_times_data.merge(self._stops_data[["stop_id", "geometry"]], left_on='stop_id', right_on='stop_id').sort_values(["trip_id", "stop_sequence"])
+        stop_ids_from_trip_id = stop_times_data.groupby("trip_id").agg(
+            stop_id=("stop_id", list),
+            stop_sequence=("stop_sequence", list),
+            geometry=("geometry", list)
         ).reset_index()
-        grouped_by_shape_id = grouped_by_shape_id[["shape_id", "stop_id", "stop_sequence"]]
 
-        output = merged[["trip_id", "shape_id"]]
-        output1 = output.merge(grouped_by_shape_id, left_on='shape_id', right_on='shape_id')
-        output1.rename(columns={"shape_id_x": "shape_id"}, inplace=True)
+        from uuid import uuid4
+        stop_ids_from_trip_id["shape_id"] = stop_ids_from_trip_id.index.to_series().map(lambda x: uuid4())
+        from itertools import accumulate
+        import operator
+        stop_ids_from_trip_id["shape_dist_traveled"] = stop_ids_from_trip_id["geometry"].apply(
+            lambda x: list(accumulate(list(
+                map(
+                    lambda pair: self.compute_wg84_line_length(LineString(pair)), list(zip(x, x[1:]))
+                )
+            ), operator.add))
+        )
+        stop_ids_from_trip_id["shape_dist_traveled"] = stop_ids_from_trip_id["shape_dist_traveled"].apply(lambda x: [0] + x)
 
-        test = output1.explode("stop_id")
-        test['shape_pt_sequence'] = test.groupby(["trip_id"])["stop_id"].cumcount()
-        stops = Stops(self, use_original_epsg=True).data[["stop_id", "geometry"]]
-        test2 = test.merge(stops, left_on='stop_id', right_on='stop_id')
-        test2 = test2.sort_values(by=["trip_id", "shape_pt_sequence"])
-        test2["shape_pt_lat"] = test2["geometry"].apply(lambda x: x.y)
-        test2["shape_pt_lon"] = test2["geometry"].apply(lambda x: x.x)
+        stop_ids_from_trip_id_exploded = stop_ids_from_trip_id.explode(["stop_sequence", "geometry", "shape_dist_traveled"]).reset_index(drop=True)
+        stop_ids_from_trip_id_exploded["shape_pt_lon"] = stop_ids_from_trip_id_exploded["geometry"].apply(lambda geom: geom.x)
+        stop_ids_from_trip_id_exploded["shape_pt_lat"] = stop_ids_from_trip_id_exploded["geometry"].apply(lambda geom: geom.y)
+        shape_data = stop_ids_from_trip_id_exploded.drop(columns=["geometry"])
+        shape_data = shape_data.rename(columns={"stop_sequence": "shape_pt_sequence"})
 
-        shapes_updated = test2
-        shapes_updated.to_csv(os.path.join(self.__RAW_DATA_DIR, self.__SHAPES_FILE_CREATED_NAME), index=False)
+        shape_data[
+            ["shape_id", "shape_pt_lon", "shape_pt_lat", "shape_pt_sequence", "shape_dist_traveled"]
+        ].to_csv(os.path.join(self.path_data, self.__SHAPES_FILE_CREATED_NAME), index=False)
 
-        # upd trips
-        shapes_updated_grouped = shapes_updated[["trip_id", "shape_id"]].groupby("trip_id").agg({'shape_id':'first'}).reset_index()
+        # update trips with shape_id features computed
         trips = Trips(self).data
-
-        if "shape_id" not in trips.columns:
+        if "shape_id" in trips.columns:
             trips.drop(columns=["shape_id"], inplace=True)
+        shapes_updated_grouped = shape_data[["trip_id", "shape_id"]].groupby("trip_id").agg({'shape_id': 'first'}).reset_index()
         trips_updated = trips.merge(shapes_updated_grouped, on="trip_id")
-
-        shapes_updated.drop(columns=["trip_id", "geometry", "stop_id"], inplace=True)
+        trips_updated.to_csv(os.path.join(self.path_data, self.__TRIPS_FILE_UPDATED_NAME), index=False)
 
     def _build_stops_data(self):
         self._stop_times_data.set_index("stop_id", inplace=True)
