@@ -5,7 +5,7 @@ from typing import Optional
 import os
 import datetime
 import itertools
-import uuid
+import copy
 
 import shapely
 from geolib import GeoLib
@@ -106,6 +106,8 @@ def group_by_similarity(data):
 
 
 class GtfsFormater(GeoLib):
+    pd.options.mode.chained_assignment = None
+
     __COORDS_PRECISION = 3
 
     __RAW_DATA_DIR = "../input_data"
@@ -113,7 +115,7 @@ class GtfsFormater(GeoLib):
     __SHAPES_FILE_CREATED_NAME ="shapes.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips.txt"
 
-    __SUB_STOPS_RESOLUTION = 10
+    __SUB_STOPS_RESOLUTION = 25
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -274,6 +276,14 @@ class GtfsFormater(GeoLib):
             return
 
     def compute_moving_geom(self, stops_on_day, lines_on_day, date):
+
+        stops_on_day["arrival_time"] = stops_on_day["arrival_time"].map(lambda x: self._compute_date(date, x))
+        stops_on_day["departure_time"] = stops_on_day["departure_time"].map(lambda x: self._compute_date(date, x))
+        stops_on_day["geometry"] = stops_on_day["geometry"].map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION))
+        stops_on_day["x"] = stops_on_day["geometry"].x
+        stops_on_day["y"] = stops_on_day["geometry"].y
+        stops_on_day = stops_on_day.rename({'arrival_time': 'start_date', 'departure_time': 'end_date'}, axis=1)
+
         processes = [
             [self.compute_line, line, stops_on_day, date]
             for line in lines_on_day.to_dict('records')
@@ -282,12 +292,17 @@ class GtfsFormater(GeoLib):
         self.logger.info(f"{len(res)}")
         data_completed = itertools.chain(*res)
 
+        # data_completed = []
         # for line in lines_on_day.to_dict('records'):
-        #     self.compute_line(line, stops_on_day, date)
-        data = gpd.GeoDataFrame(data_completed).sort_values("date_time")
-        data.drop("date_time", inplace=True, axis=1)
+        #     data_completed.append(self.compute_line(line, stops_on_day, date))
+
+        data = gpd.GeoDataFrame(data_completed)
+        data = data[["start_date", "end_date", "stop_code", "x", "y", "geometry", "stop_name", "pos", "route_type", "route_long_name", "route_short_name", "direction_id", "shape_id", "trip_id"]]
 
         data_sp = GeoDataFrame(data)
+        data_sp["start_date"] = data_sp["start_date"].apply(lambda x: int(x.timestamp()))
+        data_sp["end_date"] = data_sp["end_date"].apply(lambda x: int(x.timestamp()))
+
         data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}")
 
     def compute_fixed_geom(self, stops_data, lines_data):
@@ -336,7 +351,6 @@ class GtfsFormater(GeoLib):
 
     def compute_trip(self, date, line, line_stops, trip_id):
         trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
-
         trip_stops_computed = self._build_interpolation_stops_on_trip(date, trip_id, trip_stops, line)
         self._line_trip_ids_stops_computed.extend(trip_stops_computed)
 
@@ -369,114 +383,71 @@ class GtfsFormater(GeoLib):
 
         return line_length
 
+    @staticmethod
+    def _compute_date(date_to_add, feature_date):
+        hours, minutes, seconds = map(int, feature_date.split(":"))
+        return date_to_add + datetime.timedelta(seconds=seconds, minutes=minutes, hours=hours)
+
+    @staticmethod
+    def _compute_geom_precision(feature_geom, precision):
+        return shapely.wkt.loads(shapely.wkt.dumps(feature_geom, rounding_precision=precision))
+
     def _build_interpolation_stops_on_trip(self, date, trip_id, trip_stops, line):
 
         line_geom_remaining = line["geometry"]
 
-        DEFAULT_VALUE_START_STOP = uuid.uuid4()
-        start_stops = DEFAULT_VALUE_START_STOP
         trip_stops_computed = []
 
         trip_stops.insert(loc=0, column='pos', value=np.arange(len(trip_stops)))
-        for stop in trip_stops.to_dict('records'):
+        trip_stops_elements = trip_stops.to_dict('records')
+        stop_pairs = list(zip(trip_stops_elements, trip_stops_elements[1:]))
 
-            default_common_attributes = {
-                "stop_type": stop["route_type"],
-                "line_name": stop["route_long_name"],
-                "line_name_short": stop["route_short_name"],
-                "direction_id": stop["direction_id"],
-                "line_id": line["shape_id"],
-                "trip_id": trip_id,
-            }
+        for pair in stop_pairs:
+            first_stop = pair[0]
+            next_stop = pair[-1]
 
-            start_stop_code = DEFAULT_VALUE_START_STOP if start_stops == DEFAULT_VALUE_START_STOP else start_stops["stop_code"]
+            start_date = first_stop["end_date"]
+            end_date = next_stop["start_date"]
 
-            hours, minutes, seconds = map(int, stop["arrival_time"].split(":"))
-            arrival_time = date + datetime.timedelta(seconds=seconds, minutes=minutes, hours=hours)
-            start_date = arrival_time - datetime.timedelta(minutes=1) if start_stops == DEFAULT_VALUE_START_STOP else start_stops["date_time"]
-            end_date = arrival_time
+            # no need the first and the last to avoid duplicates
+            interpolated_datetime = pd.date_range(start_date, end_date, periods=self.__SUB_STOPS_RESOLUTION).to_list()[1:-1]
+            interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
 
-            # sometimes a stop appears at the same time with the last
-            if start_date < end_date:
+            object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
+            if object_id in self._temp_interpolated_points_cache:
+                line_geom_remaining = self._temp_interpolated_points_cache[object_id]["line_geom_remaining"]
+                interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
 
-                object_id = f"{start_stop_code}_{stop['stop_code']}"
-                if object_id in self._temp_interpolated_points_cache:
-                    line_stop_geom = self._temp_interpolated_points_cache[object_id]["line_stop_geom"]
-                    interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
+            else:
+                line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(next_stop, line_geom_remaining)
+                interpolated_points = tuple(
+                    line_stop_geom.interpolate(value, normalized=True)
+                    for value in np.linspace(0, 1, self.__SUB_STOPS_RESOLUTION)
+                )[1:-1]
 
-                else:
-                    line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(stop, line_geom_remaining)
-
-                    # data interpolated
-                    # interpolation_value = int(self.compute_wg84_line_length(line_stop_geom) * self.__SUB_STOPS_RESOLUTION / 100) #create func
-
-                    interpolated_points = tuple(
-                        line_stop_geom.interpolate(value, normalized=True)
-                        for value in np.linspace(0, 1, self.__SUB_STOPS_RESOLUTION)
-                    )[1:-1]
-
-                    # fill cache
-                    self._temp_interpolated_points_cache[object_id] = {
-                        "line_stop_geom": line_stop_geom,
-                        "interpolated_points": interpolated_points
-                    }
-
-                start_point = Point(line_stop_geom.coords[0])
-                end_point = Point(line_stop_geom.coords[-1])
-
-                start_stops = {
-                    "date_time": start_date,
-                    "stop_code": f"{start_stop_code}",
-                    "geometry": start_point if start_stops == DEFAULT_VALUE_START_STOP else start_stops["geometry"],
-                    "stop_name": self.__DEFAULT_END_STOP_NAME if start_stops == DEFAULT_VALUE_START_STOP else start_stops["stop_name"],
-                    "pos": f"{stop['pos']}_0"
+                self._temp_interpolated_points_cache[object_id] = {
+                    "interpolated_points": interpolated_points,
+                    "line_geom_remaining": line_geom_remaining
                 }
-                start_stops.update(default_common_attributes)
 
-                last_stops = {
-                    "date_time": end_date,
-                    "stop_code": str(stop["stop_code"]),
-                    "geometry": end_point,
-                    "stop_name": stop["stop_name"],
-                    "pos": stop['pos'] + 1
-                }
-                trip_stops_intermediate_computed = []
-                trip_stops_intermediate_computed.append(start_stops)
-                # trip_stops_computed.append(start_stops)
+            interpolated_data = list(zip(interpolated_datetime_pairs, interpolated_points))
 
-                # interpolation_value = int(self.compute_wg84_line_length(line_stop_geom) * self.__SUB_STOPS_RESOLUTION / 100)  # create func
-                interpolated_datetime = pd.date_range(start_date, end_date, periods=self.__SUB_STOPS_RESOLUTION).to_list()[1:-1]
-
-                interpolated_data = zip(interpolated_datetime, interpolated_points)
-
-                for sub_stop_position, (date_time, point) in enumerate(interpolated_data, start=1):
-                    new_point = {
-                        "date_time": date_time,
-                        "stop_code": f"{start_stops['stop_code']}_{sub_stop_position}",
-                        "geometry": point,
-                        "stop_name": f"{start_stops['stop_name']}({sub_stop_position})",
-                        "pos": f"{stop['pos']}_{sub_stop_position}"
+            for sub_stop_position, (date_time, point_geom) in enumerate(interpolated_data, start=1):
+                new_stop = copy.deepcopy(first_stop)
+                geom = self._compute_geom_precision(point_geom, self.__COORDS_PRECISION)
+                new_stop.update(
+                    {
+                        'end_date': date_time[-1],
+                        'start_date': date_time[0],
+                        'geometry': geom,
+                        'x': geom.x,
+                        'y': geom.y,
+                        'pos': new_stop['pos'] + sub_stop_position / 100,
                     }
-                    new_point.update(default_common_attributes)
-                    # trip_stops_computed.append(new_point)
-                    trip_stops_intermediate_computed.append(new_point)
+                )
+                trip_stops_elements.append(new_stop)
 
-                # create validity range & clean all the created points
-                dates_mapped = [element["date_time"] for element in trip_stops_intermediate_computed]
-                dates_mapped.append(end_date)
-                for enum, feature_date in enumerate(list(zip(dates_mapped, dates_mapped[1:]))):
-
-                    # if not isinstance(trip_stops_intermediate_computed[enum]["geometry"], PointArray):
-                    #     # means that it's the last end node
-                    geom = shapely.wkt.loads(shapely.wkt.dumps(trip_stops_intermediate_computed[enum]["geometry"], rounding_precision=self.__COORDS_PRECISION))
-                    trip_stops_intermediate_computed[enum]["geometry"] = geom
-                    trip_stops_intermediate_computed[enum]["x"] = geom.x
-                    trip_stops_intermediate_computed[enum]["y"] = geom.y
-                    trip_stops_intermediate_computed[enum]["start_date"] = feature_date[0].timestamp()
-                    trip_stops_intermediate_computed[enum]["end_date"] = feature_date[-1].timestamp()
-
-                trip_stops_computed.extend(trip_stops_intermediate_computed)
-                start_stops = last_stops
+        trip_stops_computed.extend(trip_stops_elements)
 
         return trip_stops_computed
 
@@ -487,6 +458,13 @@ class GtfsFormater(GeoLib):
         all_points_coords = chain(line_shape_geom_remained.coords, projected_point.coords)
         all_points = map(Point, all_points_coords)
         new_line = LineString(sorted(all_points, key=line_shape_geom_remained.project))
+
+        #TODO useful ? it's working!
+        # lines_coords = list(new_line.coords)
+        # split_index = lines_coords.index(projected_point.coords[0])
+        # stop_segment = LineString(lines_coords[:split_index + 1])
+        # line_geom_remaining = LineString(lines_coords[split_index:])
+
         line_splitted_result = split(new_line, projected_point)
         stop_segment = line_splitted_result.geoms[0]
         line_geom_remaining = line_splitted_result.geoms[-1]

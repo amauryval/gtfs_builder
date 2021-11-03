@@ -99,7 +99,7 @@ class GtfsMain(GeoLib):
     def nodes_by_date_from_parquet(self, current_date):
         current_date = datetime.datetime.fromisoformat(current_date).timestamp()
         filtered_data = self._session.loc[(self._session["start_date"] <= current_date) & (self._session["end_date"] >= current_date)]
-        filtered_data = filtered_data[["stop_code", "x", "y", "line_name_short"]]
+        filtered_data = filtered_data[["stop_code", "x", "y", "route_short_name"]]
 
         return {
             "data_geojson": filtered_data.to_dict("records")

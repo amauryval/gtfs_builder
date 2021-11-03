@@ -19,4 +19,4 @@ def test_data_processing(credentials):
     assert base_stops.shape == (1, 8)
 
     moving_stops = sp.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (180, 14)
+    assert moving_stops.shape == (306, 14)
