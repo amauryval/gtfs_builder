@@ -152,6 +152,7 @@ class GtfsFormater(GeoLib):
         data_path,
         transport_modes: Optional[List[str]] = None,
         days: Optional[List[str]] = None,
+        build_shape_data: bool = False
     ):
         super().__init__()
 
@@ -159,6 +160,7 @@ class GtfsFormater(GeoLib):
         self.path_data = data_path
         self._transport_modes = transport_modes
         self._days = days
+        self.build_shape_data = build_shape_data
 
         self.run()
 

@@ -1,7 +1,6 @@
 from flask import Blueprint
 from flask import jsonify
 from flask import request
-from sqlalchemy.exc import InvalidRequestError
 
 import traceback
 
@@ -37,9 +36,9 @@ def gtfs_routes(session):
             input_data.headers.add('Access-Control-Allow-Origin', '*')
 
             return input_data
-        except InvalidRequestError:
-            # sqlachemy : no further SQL can be emitted within this transaction
-            return jsonify(exception=traceback.format_exc()), 204
+
+        except Exception as exc:
+            return jsonify(exception=exc), 204
 
     @gtfs_routes.get("/range_dates")
     def range_dates():
@@ -51,8 +50,7 @@ def gtfs_routes(session):
             input_data.headers.add('Access-Control-Allow-Origin', '*')
 
             return input_data
-        except InvalidRequestError:
-            # sqlachemy : no further SQL can be emitted within this transaction
-            return jsonify(exception=traceback.format_exc()), 204
+        except Exception as exc:
+            return jsonify(exception=exc), 204
 
     return gtfs_routes
