@@ -112,7 +112,7 @@ class GtfsFormater(GeoLib):
 
     __RAW_DATA_DIR = "../input_data"
 
-    __SHAPES_FILE_CREATED_NAME ="shapes.txt"
+    __SHAPES_FILE_CREATED_NAME = "shapes.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips.txt"
 
     __SUB_STOPS_RESOLUTION = 25
@@ -126,12 +126,22 @@ class GtfsFormater(GeoLib):
         "sunday",
     ]
 
-    __DEFAULT_END_STOP_NAME = "Start"
-    __DEFAULT_VALUE_START_STOP = 9999
-
-    _OUTPUT_STOPS_POINTS = []
-    __MAIN_DB_SCHEMA = "gtfs_data"
-    __PG_EXTENSIONS = ["btree_gist", "postgis"]
+    __MOVING_DATA_COLUMNS = [
+        "start_date",
+        "end_date",
+        "stop_code",
+        "x",
+        "y",
+        "geometry",
+        "stop_name",
+        "pos",
+        "route_type",
+        "route_long_name",
+        "route_short_name",
+        "direction_id",
+        "shape_id",
+        "trip_id"
+    ]
 
     __MOVING_STOPS_OUTPUT_PARQUET_FILE = "moving_stops.parq"
     __BASE_STOPS_OUTPUT_PARQUET_FILE = "base_stops_data.parq"
@@ -194,7 +204,14 @@ class GtfsFormater(GeoLib):
         merged.rename(columns={"index": "trip_id"}, inplace=True)
 
         # find best geom path
-        grouped_by_shape_id = merged.groupby("shape_id").agg({'trip_id':'first', 'stop_id':'first', 'stop_count':'max', "stop_sequence": "first"}).reset_index()
+        grouped_by_shape_id = merged.groupby("shape_id").agg(
+            {
+                "trip_id": "first",
+                "stop_id": "first",
+                "stop_count": "max",
+                "stop_sequence": "first"
+            }
+        ).reset_index()
         grouped_by_shape_id = grouped_by_shape_id[["shape_id", "stop_id", "stop_sequence"]]
 
         output = merged[["trip_id", "shape_id"]]
@@ -297,7 +314,7 @@ class GtfsFormater(GeoLib):
         #     data_completed.append(self.compute_line(line, stops_on_day, date))
 
         data = gpd.GeoDataFrame(data_completed)
-        data = data[["start_date", "end_date", "stop_code", "x", "y", "geometry", "stop_name", "pos", "route_type", "route_long_name", "route_short_name", "direction_id", "shape_id", "trip_id"]]
+        data = data[self.__MOVING_DATA_COLUMNS]
 
         data_sp = GeoDataFrame(data)
         data_sp["start_date"] = data_sp["start_date"].apply(lambda x: int(x.timestamp()))
