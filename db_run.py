@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 
 load_dotenv(".gtfs.env")
 
-
-
 if __name__ == '__main__':
 
     GtfsFormater(
