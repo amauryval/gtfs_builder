@@ -30,6 +30,8 @@ class OpenGtfs:
     _SEPARATOR = ","
     _OUTPUT_ESPG_KEY = "output_epsg"
 
+    _COMPUTED_FILE_TAGS = ["_computed", "_updated"]
+
     _DEFAULT_EPSG = 4326
 
     def __init__(self, geo_tools_core, path_data, input_file, use_original_epsg=False):
@@ -45,7 +47,10 @@ class OpenGtfs:
             open(os.path.join(self._path_data, "inputs_attrs.json")).read()
         )
 
-        default_field_and_type = config_file_path[input_file]
+        input_file_base = str(input_file)
+        for tag in self._COMPUTED_FILE_TAGS:
+            input_file_base = input_file_base.replace(tag, "")
+        default_field_and_type = config_file_path[input_file_base]
 
         self.core.logger.info(f"Opening {input_file}")
 
