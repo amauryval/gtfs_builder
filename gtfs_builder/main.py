@@ -150,7 +150,9 @@ class GtfsFormater(GeoLib):
         ).reset_index()
 
         # create a shape_id regarding stop_id values
-        stop_ids_from_trip_id = stop_ids_from_trip_id.assign(shape_id=[hashlib.sha256('_'.join(map(str, element)).encode('utf-8')).hexdigest() for element in stop_ids_from_trip_id["stop_id"]])
+        stop_ids_from_trip_id = stop_ids_from_trip_id.assign(
+            shape_id=[hashlib.sha256('_'.join(map(str, element)).encode('utf-8')).hexdigest() for element in stop_ids_from_trip_id["stop_id"]]
+        )
 
         # update trips with shape_id features computed
         trips = Trips(self).data
@@ -167,26 +169,27 @@ class GtfsFormater(GeoLib):
             geometry=("geometry", "first")
         ).reset_index()
 
-        stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"] = stop_ids_from_trip_id_grouped_by_similar["geometry"].apply(
-            lambda x: list(accumulate(list(
+        stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"] = [
+            [0] + list(accumulate(list(
                 map(
-                    lambda pair: self.compute_wg84_line_length(LineString(pair)), list(zip(x, x[1:]))
+                    lambda pair: self.compute_wg84_line_length(LineString(pair)), list(zip(row, row[1:]))
                 )
             ), operator.add))
-        )
-        stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"] = stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"].apply(lambda x: [0] + x)
+            for row in stop_ids_from_trip_id_grouped_by_similar["geometry"]
+        ]
 
         stop_ids_from_trip_id_exploded = stop_ids_from_trip_id_grouped_by_similar.explode(["stop_sequence", "geometry", "shape_dist_traveled"]).reset_index(drop=True)
-        stop_ids_from_trip_id_exploded["shape_pt_lon"] = stop_ids_from_trip_id_exploded["geometry"].apply(lambda geom: geom.x)
-        stop_ids_from_trip_id_exploded["shape_pt_lat"] = stop_ids_from_trip_id_exploded["geometry"].apply(lambda geom: geom.y)
+        stop_ids_from_trip_id_exploded = stop_ids_from_trip_id_exploded.assign(
+            shape_pt_lon=[geom.x for geom in stop_ids_from_trip_id_exploded["geometry"]],
+            shape_pt_lat=[geom.y for geom in stop_ids_from_trip_id_exploded["geometry"]]
+        )
+
         shape_data = stop_ids_from_trip_id_exploded.drop(columns=["geometry"])
         shape_data = shape_data.rename(columns={"stop_sequence": "shape_pt_sequence"})
 
         shape_data[
             ["shape_id", "shape_pt_lon", "shape_pt_lat", "shape_pt_sequence", "shape_dist_traveled"]
         ].to_csv(os.path.join(self.path_data, self.__SHAPES_FILE_CREATED_NAME), index=False)
-
-
 
     def _build_stops_data(self):
         self._stop_times_data.set_index("stop_id", inplace=True)
@@ -237,7 +240,6 @@ class GtfsFormater(GeoLib):
             lines_on_day = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_on_day["shape_id"].to_list())].copy()
 
             self.logger.info(f">>> WORKING DAY - {start_date_day} {date} - {lines_on_day.shape[0]} line(s) day found")
-            self._line_trip_ids_stops_computed = []
 
             self.compute_moving_geom(stops_on_day, lines_on_day, date)
             self.compute_fixed_geom(stops_on_day, lines_on_day)
@@ -246,9 +248,11 @@ class GtfsFormater(GeoLib):
 
     def compute_moving_geom(self, stops_on_day, lines_on_day, date):
 
-        stops_on_day["arrival_time"] = stops_on_day["arrival_time"].map(lambda x: self._compute_date(date, x))
-        stops_on_day["departure_time"] = stops_on_day["departure_time"].map(lambda x: self._compute_date(date, x))
-        stops_on_day["geometry"] = stops_on_day["geometry"].map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION))
+        stops_on_day = stops_on_day.assign(
+            arrival_time=[self._compute_date(date, row) for row in stops_on_day["arrival_time"]],
+            departure_time=[self._compute_date(date, row) for row in stops_on_day["departure_time"]],
+            geometry=[self._compute_geom_precision(row, self.__COORDS_PRECISION) for row in stops_on_day["geometry"]],
+        )
         stops_on_day["x"] = stops_on_day["geometry"].x
         stops_on_day["y"] = stops_on_day["geometry"].y
         stops_on_day = stops_on_day.rename({'arrival_time': 'start_date', 'departure_time': 'end_date'}, axis=1)
@@ -257,20 +261,21 @@ class GtfsFormater(GeoLib):
             [self.compute_line, line, stops_on_day, date]
             for line in lines_on_day.to_dict('records')
         ]
-        res = run_process(processes)
-        self.logger.info(f"{len(res)}")
-        data_completed = itertools.chain(*res)
+        data_completed = run_process(processes)
 
         # data_completed = []
         # for line in lines_on_day.to_dict('records'):
         #     data_completed.append(self.compute_line(line, stops_on_day, date))
 
+        self.logger.info(f"{len(data_completed)}")
+        data_completed = itertools.chain(*data_completed)
+
         data = gpd.GeoDataFrame(data_completed)
         data = data[self.__MOVING_DATA_COLUMNS]
 
         data_sp = GeoDataFrame(data)
-        data_sp["start_date"] = data_sp["start_date"].apply(lambda x: int(x.timestamp()))
-        data_sp["end_date"] = data_sp["end_date"].apply(lambda x: int(x.timestamp()))
+        data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
+        data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
         data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}")
 
@@ -313,15 +318,18 @@ class GtfsFormater(GeoLib):
         line_stops = self._get_stops_line(input_line_id, stops_on_day)
 
         trips_to_proceed = set(line_stops["trip_id"].to_list())
-        for trip_id in trips_to_proceed:
+        trip_stops_computed = [
             self.compute_trip(date, line, line_stops, trip_id)
+            for trip_id in trips_to_proceed
+        ]
 
-        return self._line_trip_ids_stops_computed
+        return itertools.chain(*trip_stops_computed)
 
     def compute_trip(self, date, line, line_stops, trip_id):
         trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
         trip_stops_computed = self._build_interpolation_stops_on_trip(date, trip_id, trip_stops, line)
-        self._line_trip_ids_stops_computed.extend(trip_stops_computed)
+
+        return trip_stops_computed
 
     def _get_stops_line(self, input_line_id, stops_on_day):
 
@@ -331,8 +339,8 @@ class GtfsFormater(GeoLib):
         if len(line_caracteristics) > 2:
             raise ValueError(
                 f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
-        caract1, caract2 = line_caracteristics
-        self.logger.info(f"> Working line {input_line_id} ({caract1}: {caract2})")
+        caract_1, caract_2 = line_caracteristics
+        self.logger.info(f"> Working line {input_line_id} ({caract_1}: {caract_2})")
         stops_line.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
         return stops_line
@@ -367,7 +375,7 @@ class GtfsFormater(GeoLib):
 
         trip_stops_computed = []
 
-        trip_stops.insert(loc=0, column='pos', value=np.arange(len(trip_stops)))
+        trip_stops["pos"] = np.arange(len(trip_stops))
         trip_stops_elements = trip_stops.to_dict('records')
         stop_pairs = list(zip(trip_stops_elements, trip_stops_elements[1:]))
 
