@@ -21,7 +21,6 @@ from gtfs_builder.inputs_builders.stop_times_in import StopsTimes
 from gtfs_builder.inputs_builders.trips_in import Trips
 from gtfs_builder.inputs_builders.calendar_in import Calendar
 from gtfs_builder.inputs_builders.routes_in import Routes
-from gtfs_builder.core.core import InputDataNotFound
 from shapely.ops import split
 
 from shapely.geometry import Point
@@ -29,7 +28,7 @@ from shapely.geometry import LineString
 
 import pandas as pd
 
-from collections import defaultdict
+import hashlib
 
 from psycopg2.extras import DateTimeRange
 
@@ -151,8 +150,8 @@ class GtfsFormater(GeoLib):
         ).reset_index()
 
         from uuid import uuid4
-        # TODO create a shape_id regarding stop_id values
-        stop_ids_from_trip_id["shape_id"] = stop_ids_from_trip_id["stop_id"].apply(lambda x: "_".join(x).replace(" ", "")) # stop_ids_from_trip_id.index.to_series().map(lambda x: uuid4())
+        # create a shape_id regarding stop_id values
+        stop_ids_from_trip_id = stop_ids_from_trip_id.assign(shape_id=[hashlib.sha256('_'.join(map(str, element)).encode('utf-8')).hexdigest() for element in stop_ids_from_trip_id["stop_id"]])
 
         # update trips with shape_id features computed
         trips = Trips(self).data
@@ -219,7 +218,10 @@ class GtfsFormater(GeoLib):
         while start_date <= end_date:
             start_date_day = self.__DAYS_MAPPING[start_date.weekday()]
             service_id_working = self._calendar_data.loc[
-                (self._calendar_data[start_date_day] == "1") & ((self._calendar_data["start_date"] >= start_date) | (self._calendar_data["end_date"] <= start_date))
+                (self._calendar_data[start_date_day] == "1")
+                & (
+                    (self._calendar_data["start_date"] >= start_date)  | (self._calendar_data["end_date"] <= start_date)
+                )
             ]["service_id"].to_list()
 
             service_ids_to_proceed_by_day[start_date] = (start_date_day, service_id_working)
