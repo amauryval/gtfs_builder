@@ -33,10 +33,11 @@ from collections import defaultdict
 
 from psycopg2.extras import DateTimeRange
 
-from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
 
+from itertools import accumulate
+import operator
 
 from spatialpandas import GeoDataFrame
 
@@ -214,9 +215,6 @@ class GtfsFormater(GeoLib):
             geometry=("geometry", "first")
         ).reset_index()
 
-
-        from itertools import accumulate
-        import operator
         stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"] = stop_ids_from_trip_id_grouped_by_similar["geometry"].apply(
             lambda x: list(accumulate(list(
                 map(
