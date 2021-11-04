@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 from dotenv import load_dotenv
 
-from gtfs_builder.gtfs_app.routes import gtfs_routes
+from gtfs_builder.app.routes import gtfs_routes
 
 from spatialpandas import io
 

@@ -1,6 +1,6 @@
 import pytest
 
-from gtfs_builder.gtfs_app.routes import gtfs_routes
+from gtfs_builder.app.routes import gtfs_routes
 
 from flask import Flask
 from dotenv import load_dotenv

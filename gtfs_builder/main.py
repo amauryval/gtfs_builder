@@ -13,15 +13,15 @@ from itertools import chain
 import numpy as np
 import geopandas as gpd
 
-from gtfs_builder.gtfs_core.optim_helper import DfOptimizer
+from gtfs_builder.core.optim_helper import DfOptimizer
 
-from gtfs_builder.gtfs_cp_inputs.shapes_in import Shapes
-from gtfs_builder.gtfs_cp_inputs.stops_in import Stops
-from gtfs_builder.gtfs_cp_inputs.stop_times_in import StopsTimes
-from gtfs_builder.gtfs_cp_inputs.trips_in import Trips
-from gtfs_builder.gtfs_cp_inputs.calendar_in import Calendar
-from gtfs_builder.gtfs_cp_inputs.routes_in import Routes
-from gtfs_builder.gtfs_core.core import InputDataNotFound
+from gtfs_builder.inputs_builders.shapes_in import Shapes
+from gtfs_builder.inputs_builders.stops_in import Stops
+from gtfs_builder.inputs_builders.stop_times_in import StopsTimes
+from gtfs_builder.inputs_builders.trips_in import Trips
+from gtfs_builder.inputs_builders.calendar_in import Calendar
+from gtfs_builder.inputs_builders.routes_in import Routes
+from gtfs_builder.core.core import InputDataNotFound
 from shapely.ops import split
 
 from shapely.geometry import Point

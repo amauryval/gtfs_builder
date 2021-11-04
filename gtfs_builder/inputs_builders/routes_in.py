@@ -1,7 +1,7 @@
 from typing import List
 from typing import Optional
 
-from gtfs_builder.gtfs_core.core import OpenGtfs
+from gtfs_builder.core.core import OpenGtfs
 
 
 class Routes(OpenGtfs):

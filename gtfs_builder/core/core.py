@@ -7,7 +7,7 @@ from shapely.geometry import LineString
 
 import json
 
-from gtfs_builder.gtfs_core.optim_helper import DfOptimizer
+from gtfs_builder.core.optim_helper import DfOptimizer
 
 
 class InputDataNotFound(Exception):

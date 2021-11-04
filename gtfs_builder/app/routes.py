@@ -2,13 +2,7 @@ from flask import Blueprint
 from flask import jsonify
 from flask import request
 
-import traceback
-
-from gtfs_builder.gtfs_app.core import GtfsMain
-
-from gtfs_builder.gtfs_db.stops import StopsGeom
-from gtfs_builder.gtfs_db.stops_times import StopsTimesValues
-import os
+from gtfs_builder.app.core import GtfsMain
 
 
 def gtfs_routes(session):
@@ -19,8 +13,6 @@ def gtfs_routes(session):
         template_folder='templates',
         url_prefix='/api/v1/gtfs'
     )
-    StopsGeom.set_session(session)
-    StopsTimesValues.set_session(session)
 
     @gtfs_routes.get("/nodes_by_date")
     def nodes_by_date():
