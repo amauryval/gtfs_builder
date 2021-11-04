@@ -31,7 +31,7 @@ def test_data_processing_with_shape_id_computed(credentials):
         True
     )
     base_lines = sp.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (11, 8)
+    assert base_lines.shape == (9, 8)
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
     assert base_stops.shape == (1, 8)

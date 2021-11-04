@@ -196,19 +196,37 @@ class GtfsFormater(GeoLib):
         ).reset_index()
 
         from uuid import uuid4
-        stop_ids_from_trip_id["shape_id"] = stop_ids_from_trip_id.index.to_series().map(lambda x: uuid4())
+        # TODO create a shape_id regarding stop_id values
+        stop_ids_from_trip_id["shape_id"] = stop_ids_from_trip_id["stop_id"].apply(lambda x: "_".join(x).replace(" ", "")) # stop_ids_from_trip_id.index.to_series().map(lambda x: uuid4())
+
+        # update trips with shape_id features computed
+        trips = Trips(self).data
+        if "shape_id" in trips.columns:
+            trips.drop(columns=["shape_id"], inplace=True)
+        trips_updated = trips.merge(stop_ids_from_trip_id[["trip_id", "shape_id"]], on="trip_id")
+        trips_updated.to_csv(os.path.join(self.path_data, self.__TRIPS_FILE_UPDATED_NAME), index=False)
+
+
+        # create a new id to remove similar line when grouping on it
+        stop_ids_from_trip_id_grouped_by_similar = stop_ids_from_trip_id.groupby("shape_id").agg(
+            stop_id=("stop_id", "first"),
+            stop_sequence=("stop_sequence", "first"),
+            geometry=("geometry", "first")
+        ).reset_index()
+
+
         from itertools import accumulate
         import operator
-        stop_ids_from_trip_id["shape_dist_traveled"] = stop_ids_from_trip_id["geometry"].apply(
+        stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"] = stop_ids_from_trip_id_grouped_by_similar["geometry"].apply(
             lambda x: list(accumulate(list(
                 map(
                     lambda pair: self.compute_wg84_line_length(LineString(pair)), list(zip(x, x[1:]))
                 )
             ), operator.add))
         )
-        stop_ids_from_trip_id["shape_dist_traveled"] = stop_ids_from_trip_id["shape_dist_traveled"].apply(lambda x: [0] + x)
+        stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"] = stop_ids_from_trip_id_grouped_by_similar["shape_dist_traveled"].apply(lambda x: [0] + x)
 
-        stop_ids_from_trip_id_exploded = stop_ids_from_trip_id.explode(["stop_sequence", "geometry", "shape_dist_traveled"]).reset_index(drop=True)
+        stop_ids_from_trip_id_exploded = stop_ids_from_trip_id_grouped_by_similar.explode(["stop_sequence", "geometry", "shape_dist_traveled"]).reset_index(drop=True)
         stop_ids_from_trip_id_exploded["shape_pt_lon"] = stop_ids_from_trip_id_exploded["geometry"].apply(lambda geom: geom.x)
         stop_ids_from_trip_id_exploded["shape_pt_lat"] = stop_ids_from_trip_id_exploded["geometry"].apply(lambda geom: geom.y)
         shape_data = stop_ids_from_trip_id_exploded.drop(columns=["geometry"])
@@ -218,13 +236,7 @@ class GtfsFormater(GeoLib):
             ["shape_id", "shape_pt_lon", "shape_pt_lat", "shape_pt_sequence", "shape_dist_traveled"]
         ].to_csv(os.path.join(self.path_data, self.__SHAPES_FILE_CREATED_NAME), index=False)
 
-        # update trips with shape_id features computed
-        trips = Trips(self).data
-        if "shape_id" in trips.columns:
-            trips.drop(columns=["shape_id"], inplace=True)
-        shapes_updated_grouped = shape_data[["trip_id", "shape_id"]].groupby("trip_id").agg({'shape_id': 'first'}).reset_index()
-        trips_updated = trips.merge(shapes_updated_grouped, on="trip_id")
-        trips_updated.to_csv(os.path.join(self.path_data, self.__TRIPS_FILE_UPDATED_NAME), index=False)
+
 
     def _build_stops_data(self):
         self._stop_times_data.set_index("stop_id", inplace=True)

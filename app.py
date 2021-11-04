@@ -13,6 +13,8 @@ from spatialpandas import io
 load_dotenv(".gtfs.env")
 
 session = io.read_parquet(f"{os.environ['study_area_name']}_moving_stops.parq")
+# session2 = io.read_parquet(f"{os.environ['study_area_name']}2_moving_stops.parq")
+
 
 app = Flask(__name__)
 CORS(app)

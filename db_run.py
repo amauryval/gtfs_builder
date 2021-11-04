@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv(".gtfs.env")
 
+
+
 if __name__ == '__main__':
 
     GtfsFormater(
@@ -12,5 +14,5 @@ if __name__ == '__main__':
         data_path=os.environ["INPUT_DATA_DIR"],
         transport_modes=os.environ["TRANSPORT_MODES"].split(","),
         days=os.environ["DAYS"].split(","),
-        build_shape_data=bool(os.environ["BUILD_SHAPE_ID"])
+        build_shape_data=bool(int(os.environ["BUILD_SHAPE_ID"]))
     )
