@@ -149,7 +149,6 @@ class GtfsFormater(GeoLib):
             geometry=("geometry", list)
         ).reset_index()
 
-        from uuid import uuid4
         # create a shape_id regarding stop_id values
         stop_ids_from_trip_id = stop_ids_from_trip_id.assign(shape_id=[hashlib.sha256('_'.join(map(str, element)).encode('utf-8')).hexdigest() for element in stop_ids_from_trip_id["stop_id"]])
 
