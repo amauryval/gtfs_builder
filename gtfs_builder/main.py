@@ -42,24 +42,6 @@ import operator
 from spatialpandas import GeoDataFrame
 
 
-
-def run_thread(processes, workers_number=4):
-    # TODO add to geolib
-
-    with ThreadPoolExecutor(max_workers=workers_number) as executor:
-
-        executions = []
-        for process in processes:
-            if isinstance(process, list):
-                executions.append(executor.submit(*process))
-            else:
-                executions.append(executor.submit(process))
-        # to return exceptions
-        return [
-            exe.result()
-            for exe in as_completed(executions)
-        ]
-
 def run_process(processes, workers_number=4):
     # TODO add to geolib
 
@@ -76,34 +58,6 @@ def run_process(processes, workers_number=4):
             exe.result()
             for exe in as_completed(executions)
         ]
-
-
-def group_by_similarity(data):
-    import uuid
-    data["values_frozen"] = data["stop_id"].apply(frozenset)
-    data.loc[:, "start_end_stops"] = None
-
-    my_rows = zip(data["trip_id"], data["values_frozen"], data["start_end_stops"])
-    output = defaultdict(lambda: defaultdict(str))
-
-    for idx, (trip_id, values_frozen, start_end_stops) in enumerate(my_rows):
-        common_id = str(uuid.uuid4())
-
-        if trip_id not in output:
-            data_not_proceed = data.loc[data.start_end_stops is not None]
-            data_to_procceed = data_not_proceed.loc[
-                data_not_proceed["values_frozen"].apply(lambda x: len(x.intersection(values_frozen)) >= 2)
-            ]["trip_id"]
-            if data_to_procceed.shape[0] > 0:
-                for trip_id_value in data_to_procceed.tolist():
-                    output[trip_id_value] = common_id
-
-            else:
-                output[trip_id] = common_id
-        else:
-            assert True
-
-    return output
 
 
 class GtfsFormater(GeoLib):
