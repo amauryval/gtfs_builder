@@ -9,16 +9,22 @@ from gtfs_builder.app.routes import gtfs_routes
 
 from spatialpandas import io
 
-
 load_dotenv(".gtfs.env")
 
-session = io.read_parquet(f"{os.environ['study_area_name']}_moving_stops.parq")
-# session2 = io.read_parquet(f"{os.environ['study_area_name']}2_moving_stops.parq")
+sessions = [
+    {
+        "data": io.read_parquet(f"{os.environ['study_area_name']}_moving_stops.parq"),
+        "study_area": "toulouse"
+    }
+]
 
 
 app = Flask(__name__)
 CORS(app)
-app.register_blueprint(gtfs_routes(session))
+
+for session in sessions:
+    app.register_blueprint(gtfs_routes(session["data"], session["study_area"]))
+
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_SORT_KEYS'] = False
 
