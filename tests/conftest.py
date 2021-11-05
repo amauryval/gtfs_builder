@@ -16,9 +16,10 @@ load_dotenv(".gtfs.env")
 def flask_client():
 
     session = io.read_parquet("fake_moving_stops.parq")
+    study_area_name = "fake"
 
     app = Flask(__name__)
-    app.register_blueprint(gtfs_routes(session), url_prefix="")
+    app.register_blueprint(gtfs_routes(session, study_area_name), url_prefix="")
     app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
     app.config['JSON_SORT_KEYS'] = False
     app.config['DEBUG'] = True

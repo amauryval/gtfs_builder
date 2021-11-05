@@ -33,12 +33,31 @@ import hashlib
 from psycopg2.extras import DateTimeRange
 
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 
 from itertools import accumulate
 import operator
 
 from spatialpandas import GeoDataFrame
+
+
+def run_thread(processes, workers_number=4):
+    # TODO add to geolib
+
+    with ThreadPoolExecutor(max_workers=workers_number) as executor:
+
+        executions = []
+        for process in processes:
+            if isinstance(process, list):
+                executions.append(executor.submit(*process))
+            else:
+                executions.append(executor.submit(process))
+        # to return exceptions
+        return [
+            exe.result()
+            for exe in as_completed(executions)
+        ]
 
 
 def run_process(processes, workers_number=4):
@@ -69,7 +88,7 @@ class GtfsFormater(GeoLib):
     __SHAPES_FILE_CREATED_NAME = "shapes_computed.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips_updated.txt"
 
-    __SUB_STOPS_RESOLUTION = 25
+    __SUB_STOPS_RESOLUTION = 15
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -270,8 +289,8 @@ class GtfsFormater(GeoLib):
         self.logger.info(f"{len(data_completed)}")
         data_completed = itertools.chain(*data_completed)
 
-        data = gpd.GeoDataFrame(data_completed)
-        data = data[self.__MOVING_DATA_COLUMNS]
+        data = gpd.GeoDataFrame(data_completed).sort_values("start_date")
+        data = DfOptimizer(data[self.__MOVING_DATA_COLUMNS]).data
 
         data_sp = GeoDataFrame(data)
         data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
@@ -318,10 +337,17 @@ class GtfsFormater(GeoLib):
         line_stops = self._get_stops_line(input_line_id, stops_on_day)
 
         trips_to_proceed = set(line_stops["trip_id"].to_list())
+
         trip_stops_computed = [
             self.compute_trip(date, line, line_stops, trip_id)
             for trip_id in trips_to_proceed
         ]
+
+        # processes = [
+        #     [self.compute_trip, date, line, line_stops, trip_id]
+        #     for trip_id in trips_to_proceed
+        # ]
+        # trip_stops_computed = run_thread(processes)
 
         return itertools.chain(*trip_stops_computed)
 
@@ -376,6 +402,7 @@ class GtfsFormater(GeoLib):
         trip_stops_computed = []
 
         trip_stops["pos"] = np.arange(len(trip_stops))
+
         trip_stops_elements = trip_stops.to_dict('records')
         stop_pairs = list(zip(trip_stops_elements, trip_stops_elements[1:]))
 
@@ -387,8 +414,8 @@ class GtfsFormater(GeoLib):
             end_date = next_stop["start_date"]
 
             # no need the first and the last to avoid duplicates
-            interpolated_datetime = pd.date_range(start_date, end_date, periods=self.__SUB_STOPS_RESOLUTION).to_list()[1:-1]
-            interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
+            interpolated_datetime = pd.date_range(start_date, end_date, periods=self.__SUB_STOPS_RESOLUTION).to_list()
+            interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
 
             object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
             if object_id in self._temp_interpolated_points_cache:
@@ -400,33 +427,37 @@ class GtfsFormater(GeoLib):
                 interpolated_points = tuple(
                     line_stop_geom.interpolate(value, normalized=True)
                     for value in np.linspace(0, 1, self.__SUB_STOPS_RESOLUTION)
-                )[1:-1]
+                )
 
                 self._temp_interpolated_points_cache[object_id] = {
                     "interpolated_points": interpolated_points,
                     "line_geom_remaining": line_geom_remaining
                 }
 
-            interpolated_data = list(zip(interpolated_datetime_pairs, interpolated_points))
+            interpolated_data = zip(interpolated_datetime_pairs, interpolated_points)
 
-            for sub_stop_position, (date_time, point_geom) in enumerate(interpolated_data, start=1):
-                new_stop = copy.deepcopy(first_stop)
-                geom = self._compute_geom_precision(point_geom, self.__COORDS_PRECISION)
-                new_stop.update(
-                    {
-                        'end_date': date_time[-1],
-                        'start_date': date_time[0],
-                        'geometry': geom,
-                        'x': geom.x,
-                        'y': geom.y,
-                        'pos': new_stop['pos'] + sub_stop_position / 100,
-                    }
-                )
-                trip_stops_elements.append(new_stop)
+            trip_stops_elements.extend([
+                self.__create_intermediate_point(first_stop, sub_stop_position, date_time, point_geom)
+                for sub_stop_position, (date_time, point_geom) in enumerate(interpolated_data)
+            ])
 
-        trip_stops_computed.extend(trip_stops_elements)
+        return trip_stops_elements
 
-        return trip_stops_computed
+    def __create_intermediate_point(self, first_stop, sub_stop_position, date_time, point_geom):
+        new_stop = copy.deepcopy(first_stop)
+        geom = self._compute_geom_precision(point_geom, self.__COORDS_PRECISION)
+        new_stop.update(
+            {
+                'end_date': date_time[-1],
+                'start_date': date_time[0],
+                'geometry': geom,
+                'x': geom.x,
+                'y': geom.y,
+                'pos': new_stop['pos'] + sub_stop_position / 100,
+            }
+        )
+        return new_stop
+
 
     def _get_dedicated_line_from_stop(self, stop: Dict, line_shape_geom_remained):
 
