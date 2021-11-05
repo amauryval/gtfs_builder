@@ -88,7 +88,7 @@ class GtfsFormater(GeoLib):
     __SHAPES_FILE_CREATED_NAME = "shapes_computed.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips_updated.txt"
 
-    __SUB_STOPS_RESOLUTION = 15
+    __SUB_STOPS_RESOLUTION = 10
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -241,7 +241,7 @@ class GtfsFormater(GeoLib):
             service_id_working = self._calendar_data.loc[
                 (self._calendar_data[start_date_day] == "1")
                 & (
-                    (self._calendar_data["start_date"] >= start_date)  | (self._calendar_data["end_date"] <= start_date)
+                    (self._calendar_data["start_date"] >= start_date) | (self._calendar_data["end_date"] <= start_date)
                 )
             ]["service_id"].to_list()
 
@@ -398,8 +398,6 @@ class GtfsFormater(GeoLib):
     def _build_interpolation_stops_on_trip(self, date, trip_id, trip_stops, line):
 
         line_geom_remaining = line["geometry"]
-
-        trip_stops_computed = []
 
         trip_stops["pos"] = np.arange(len(trip_stops))
 
