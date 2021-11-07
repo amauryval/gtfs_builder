@@ -29,7 +29,7 @@ def test_data_processing_full_data_thresh_2(credentials):
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
-    assert base_stops.shape == (1, 8)
+    assert base_stops.shape == (8, 8)
     assert base_stops.columns.tolist() == ['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color']
 
     moving_stops = sp.read_parquet("fake_moving_stops.parq")
@@ -53,7 +53,7 @@ def test_data_processing_full_data_calendar_dates(credentials):
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
-    assert base_stops.shape == (1, 8)
+    assert base_stops.shape == (8, 8)
     assert base_stops.columns.tolist() == ['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color']
 
     moving_stops = sp.read_parquet("fake_moving_stops.parq")
@@ -78,11 +78,11 @@ def test_data_processing_with_shape_id_computed(credentials):
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
-    assert base_stops.shape == (1, 8)
+    assert base_stops.shape == (8, 8)
     assert base_stops.columns.tolist() == ['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color']
 
     moving_stops = sp.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (405, 14)
+    assert moving_stops.shape == (370, 14)
     assert moving_stops.columns.tolist() == ['start_date', 'end_date', 'stop_code', 'x', 'y', 'geometry', 'stop_name', 'pos', 'route_type', 'route_long_name', 'route_short_name', 'direction_id', 'shape_id', 'trip_id']
 
 
@@ -103,7 +103,7 @@ def test_data_processing_full_data_tresh_1(credentials):
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
-    assert base_stops.shape == (1, 8)
+    assert base_stops.shape == (8, 8)
     assert base_stops.columns.tolist() == ['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color']
 
     moving_stops = sp.read_parquet("fake_moving_stops.parq")

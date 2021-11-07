@@ -14,7 +14,7 @@
     "transport_modes": ["metro", "tramway"],
     "date_mode": "calendar",
     "date": "20191115",
-    "build_shape_id": true,
+    "build_shape_id": false,
     "interpolation_threshold": 700
   }
 }

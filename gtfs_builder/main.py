@@ -445,10 +445,8 @@ class GtfsFormater(GeoLib):
 
             # object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
             # if object_id in self._temp_interpolated_points_cache:
-            #     line_geom_remaining = self._temp_interpolated_points_cache[object_id]["line_geom_remaining"]
             #     interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
-            #     interpolation_value = self._temp_interpolated_points_cache[object_id]["interpolation_value"]
-            #
+            #     interpolated_value = len(interpolated_points)
             # else:
             line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(next_stop, line_geom_remaining)
 
@@ -464,8 +462,6 @@ class GtfsFormater(GeoLib):
 
             # self._temp_interpolated_points_cache[object_id] = {
             #     "interpolated_points": interpolated_points,
-            #     "line_geom_remaining": line_geom_remaining,
-            #     "interpolation_value": interpolation_value
             # }
 
             interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()
