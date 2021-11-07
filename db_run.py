@@ -1,19 +1,12 @@
-import os
-
 from gtfs_builder.main import GtfsFormater
-from dotenv import load_dotenv
 
 import json
-
-
-
-
 
 if __name__ == '__main__':
 
     with open("params.json") as input_file:
         data = json.loads(input_file.read())
-    data_filtered = data["ter"]
+    data_filtered = data["toulouse"]
 
     GtfsFormater(
         study_area_name=data_filtered["study_area_name"],

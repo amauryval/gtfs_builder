@@ -341,7 +341,8 @@ class GtfsFormater(GeoLib):
         stops_data = gpd.GeoDataFrame(stops)
         data_sp = GeoDataFrame(stops_data)
         data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_STOPS_OUTPUT_PARQUET_FILE}")
-        lines_data
+
+        #TODO improve it....
         lines = stops_data_copy[
             ["shape_id", "route_desc", "route_type", "route_short_name", "direction_id", "route_color", "route_text_color"]
         ].merge(
@@ -473,13 +474,13 @@ class GtfsFormater(GeoLib):
             interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
 
             # TODO try
-            # data = {
-            #     "start_date": map(lambda x: x[0], interpolated_datetime_pairs),
-            #     "end_date": map(lambda x: x[-1], interpolated_datetime_pairs),
-            #     "pos": map(lambda x: first_stop['pos'] + x / 100, range(0, len(interpolated_datetime_pairs))),
-            #     'geometry': map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION), interpolated_points),
-            # }
-            # trip_stops_elements.extend(pd.DataFrame(data))
+            data = {
+                "start_date": map(lambda x: x[0], interpolated_datetime_pairs),
+                "end_date": map(lambda x: x[-1], interpolated_datetime_pairs),
+                "pos": map(lambda x: first_stop['pos'] + x / 100, range(0, len(interpolated_datetime_pairs))),
+                'geometry': map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION), interpolated_points),
+            }
+            trip_stops_elements.extend(pd.DataFrame(data))
 
             interpolated_data = zip(interpolated_datetime_pairs, interpolated_points)
             trip_stops_elements.extend([
