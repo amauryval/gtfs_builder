@@ -6,7 +6,8 @@
     "date_mode": "calendar_dates",
     "date": "20211125",
     "build_shape_id": true,
-    "interpolation_threshold": 1000
+    "interpolation_threshold": 1000,
+    "multiprocess": false
   },
   "toulouse": {
     "study_area_name": "toulouse",
@@ -15,6 +16,7 @@
     "date_mode": "calendar",
     "date": "20191115",
     "build_shape_id": false,
-    "interpolation_threshold": 700
+    "interpolation_threshold": 800,
+    "multiprocess": true
   }
 }

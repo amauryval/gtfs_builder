@@ -61,7 +61,7 @@ def run_thread(processes, workers_number=4):
         ]
 
 
-def run_process(processes, workers_number=6):
+def run_process(processes, workers_number=4):
     # TODO add to geolib
 
     with ProcessPoolExecutor(max_workers=workers_number) as executor:
@@ -132,7 +132,8 @@ class GtfsFormater(GeoLib):
         date_mode: str = "calendar",
         date: str = None,
         build_shape_data: bool = False,
-        interpolation_threshold: int = 1000
+        interpolation_threshold: int = 1000,
+        multiprocess: bool = False
     ):
         super().__init__()
 
@@ -143,6 +144,7 @@ class GtfsFormater(GeoLib):
         self._date = date
         self._build_shape_data = build_shape_data
         self._interpolation_threshold = interpolation_threshold
+        self._multiprocess = multiprocess
         self.run()
 
     def run(self):
@@ -259,6 +261,8 @@ class GtfsFormater(GeoLib):
 
         if self._date_mode == "calendar":
             date = datetime.datetime.strptime(self._date, '%Y%m%d')
+            self._calendar_data["start_date"] = [datetime.datetime.strptime(row, '%Y%m%d') for row in self._calendar_data["start_date"]]
+            self._calendar_data["end_date"] = [datetime.datetime.strptime(row, '%Y%m%d') for row in self._calendar_data["end_date"]]
 
             data = self._calendar_data.loc[
                 (self._calendar_data[date.strftime("%A").lower()] == "1")
@@ -300,15 +304,16 @@ class GtfsFormater(GeoLib):
         stops_on_day["y"] = stops_on_day["geometry"].y
         stops_on_day = stops_on_day.rename({'arrival_time': 'start_date', 'departure_time': 'end_date'}, axis=1)
 
-        # processes = [
-        #     [self.compute_line, line, stops_on_day, date]
-        #     for line in lines_on_day.to_dict('records')
-        # ]
-        # data_completed = run_process(processes)
-
-        data_completed = []
-        for line in lines_on_day.to_dict('records'):
-            data_completed.append(self.compute_line(line, stops_on_day, date))
+        if self._multiprocess:
+            processes = [
+                [self.compute_line, line, stops_on_day, date]
+                for line in lines_on_day.to_dict('records')
+            ]
+            data_completed = run_process(processes)
+        else:
+            data_completed = []
+            for line in lines_on_day.to_dict('records'):
+                data_completed.append(self.compute_line(line, stops_on_day, date))
 
         self.logger.info(f"{len(data_completed)}")
         data_completed = itertools.chain(*data_completed)
@@ -338,11 +343,11 @@ class GtfsFormater(GeoLib):
         stops_data = gpd.GeoDataFrame(stops)
         data_sp = GeoDataFrame(stops_data)
         data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_STOPS_OUTPUT_PARQUET_FILE}")
-
+        lines_data
         lines = stops_data_copy[
             ["shape_id", "route_desc", "route_type", "route_short_name", "direction_id", "route_color", "route_text_color"]
         ].merge(
-            lines_data, on="shape_id", how="right"
+            lines_data, on="shape_id", how="left"
         ).groupby(["shape_id"]).agg({
             "shape_id": "first",
             "geometry": "first",
@@ -443,32 +448,42 @@ class GtfsFormater(GeoLib):
             start_date = first_stop["end_date"]
             end_date = next_stop["start_date"]
 
-            # object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
-            # if object_id in self._temp_interpolated_points_cache:
-            #     interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
-            #     interpolated_value = len(interpolated_points)
-            # else:
             line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(next_stop, line_geom_remaining)
 
-            # no need the first and the last to avoid duplicates
-            interpolation_value = int(self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
-            if interpolation_value == 0:
-                interpolation_value = 1
+            object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
+            interpolated_points = self._temp_interpolated_points_cache.get(object_id, None)
+            if interpolated_points is not None:
+                interpolated_points = interpolated_points["interpolated_points"]
+                interpolation_value = len(interpolated_points)
 
-            interpolated_points = tuple(
-                line_stop_geom.interpolate(value, normalized=True)
-                for value in np.linspace(0, 1, interpolation_value)
-            )
+            else:
+                # no need the first and the last to avoid duplicates
+                interpolation_value = int(self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
+                if interpolation_value == 0:
+                    interpolation_value = 1
 
-            # self._temp_interpolated_points_cache[object_id] = {
-            #     "interpolated_points": interpolated_points,
-            # }
+                interpolated_points = tuple(
+                    line_stop_geom.interpolate(value, normalized=True)
+                    for value in np.linspace(0, 1, interpolation_value)
+                )
+
+                self._temp_interpolated_points_cache[object_id] = {
+                    "interpolated_points": interpolated_points,
+                }
 
             interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()
-            interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
+            interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
+
+            # TODO try
+            # data = {
+            #     "start_date": map(lambda x: x[0], interpolated_datetime_pairs),
+            #     "end_date": map(lambda x: x[-1], interpolated_datetime_pairs),
+            #     "pos": map(lambda x: first_stop['pos'] + x / 100, range(0, len(interpolated_datetime_pairs))),
+            #     'geometry': map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION), interpolated_points),
+            # }
+            # trip_stops_elements.extend(pd.DataFrame(data))
 
             interpolated_data = zip(interpolated_datetime_pairs, interpolated_points)
-
             trip_stops_elements.extend([
                 self.__create_intermediate_point(first_stop, sub_stop_position, date_time, point_geom)
                 for sub_stop_position, (date_time, point_geom) in enumerate(interpolated_data)

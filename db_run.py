@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     with open("params.json") as input_file:
         data = json.loads(input_file.read())
-    data_filtered = data["toulouse"]
+    data_filtered = data["ter"]
 
     GtfsFormater(
         study_area_name=data_filtered["study_area_name"],
@@ -22,5 +22,6 @@ if __name__ == '__main__':
         date_mode=data_filtered["date_mode"],
         date=data_filtered["date"],
         build_shape_data=data_filtered["build_shape_id"],
-        interpolation_threshold=data_filtered["interpolation_threshold"]
+        interpolation_threshold=data_filtered["interpolation_threshold"],
+        multiprocess=data_filtered["multiprocess"],
     )
