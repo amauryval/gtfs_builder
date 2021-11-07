@@ -12,7 +12,7 @@
   "toulouse": {
     "study_area_name": "toulouse",
     "input_data_dir": "input_data",
-    "transport_modes": ["metro", "tramway"],
+    "transport_modes": ["tramway", "metro"],
     "date_mode": "calendar",
     "date": "20191115",
     "build_shape_id": false,
