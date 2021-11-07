@@ -25,7 +25,7 @@ def test_data_processing_full_data_thresh_2(credentials):
         interpolation_threshold=500
     )
     base_lines = sp.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (7, 8)  # weekend not called!
+    assert base_lines.shape == (9, 8)
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
@@ -49,7 +49,7 @@ def test_data_processing_full_data_calendar_dates(credentials):
         interpolation_threshold=500
     )
     base_lines = sp.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (7, 8)
+    assert base_lines.shape == (9, 8)
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")
@@ -74,7 +74,7 @@ def test_data_processing_with_shape_id_computed(credentials):
         interpolation_threshold=200
     )
     base_lines = sp.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (7, 8)
+    assert base_lines.shape == (9, 8)
     assert base_lines.columns.tolist() == ['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color']
 
     base_stops = sp.read_parquet("fake_base_stops_data.parq")

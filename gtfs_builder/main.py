@@ -261,8 +261,6 @@ class GtfsFormater(GeoLib):
 
         if self._date_mode == "calendar":
             date = datetime.datetime.strptime(self._date, '%Y%m%d')
-            self._calendar_data["start_date"] = [datetime.datetime.strptime(row, '%Y%m%d') for row in self._calendar_data["start_date"]]
-            self._calendar_data["end_date"] = [datetime.datetime.strptime(row, '%Y%m%d') for row in self._calendar_data["end_date"]]
 
             data = self._calendar_data.loc[
                 (self._calendar_data[date.strftime("%A").lower()] == "1")
