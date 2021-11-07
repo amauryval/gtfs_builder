@@ -474,13 +474,13 @@ class GtfsFormater(GeoLib):
             interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
 
             # TODO try
-            data = {
-                "start_date": map(lambda x: x[0], interpolated_datetime_pairs),
-                "end_date": map(lambda x: x[-1], interpolated_datetime_pairs),
-                "pos": map(lambda x: first_stop['pos'] + x / 100, range(0, len(interpolated_datetime_pairs))),
-                'geometry': map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION), interpolated_points),
-            }
-            trip_stops_elements.extend(pd.DataFrame(data))
+            # data = {
+            #     "start_date": map(lambda x: x[0], interpolated_datetime_pairs),
+            #     "end_date": map(lambda x: x[-1], interpolated_datetime_pairs),
+            #     "pos": map(lambda x: first_stop['pos'] + x / 100, range(0, len(interpolated_datetime_pairs))),
+            #     'geometry': map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION), interpolated_points),
+            # }
+            # trip_stops_elements.extend(pd.DataFrame(data))
 
             interpolated_data = zip(interpolated_datetime_pairs, interpolated_points)
             trip_stops_elements.extend([
