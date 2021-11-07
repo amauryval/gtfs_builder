@@ -130,7 +130,7 @@ class GtfsFormater(GeoLib):
         data_path,
         transport_modes: Optional[List[str]] = None,
         date_mode: str = "calendar",
-        date: Optional[List[str]] = None,
+        date: str = None,
         build_shape_data: bool = False,
         interpolation_threshold: int = 1000
     ):
@@ -228,6 +228,7 @@ class GtfsFormater(GeoLib):
         stops_data.reset_index(inplace=True)
 
         stops_data.set_index("trip_id", inplace=True)
+        #TODO filter with service_id found with tips
         self._trips_data.set_index("trip_id", inplace=True)
         stops_trips_data = stops_data.join(self._trips_data).copy()
         stops_trips_data.reset_index(inplace=True)
@@ -244,6 +245,7 @@ class GtfsFormater(GeoLib):
         self.logger.info("Go to path building")
         self._temp_interpolated_points_cache = {}
 
+        #TODO run at the start and filter stop as soon as possible
         if self._date_mode == "calendar_dates":
             service_id_selected = self._calendar_dates_data.loc[self._calendar_dates_data['date'] == self._date]
             # initializing interpolated points cache
@@ -298,15 +300,15 @@ class GtfsFormater(GeoLib):
         stops_on_day["y"] = stops_on_day["geometry"].y
         stops_on_day = stops_on_day.rename({'arrival_time': 'start_date', 'departure_time': 'end_date'}, axis=1)
 
-        processes = [
-            [self.compute_line, line, stops_on_day, date]
-            for line in lines_on_day.to_dict('records')
-        ]
-        data_completed = run_process(processes)
+        # processes = [
+        #     [self.compute_line, line, stops_on_day, date]
+        #     for line in lines_on_day.to_dict('records')
+        # ]
+        # data_completed = run_process(processes)
 
-        # data_completed = []
-        # for line in lines_on_day.to_dict('records'):
-        #     data_completed.append(self.compute_line(line, stops_on_day, date))
+        data_completed = []
+        for line in lines_on_day.to_dict('records'):
+            data_completed.append(self.compute_line(line, stops_on_day, date))
 
         self.logger.info(f"{len(data_completed)}")
         data_completed = itertools.chain(*data_completed)
@@ -359,7 +361,6 @@ class GtfsFormater(GeoLib):
         try:
 
             input_line_id = line["shape_id"]
-
 
             line_stops = self._get_stops_line(input_line_id, stops_on_day)
 
@@ -442,28 +443,30 @@ class GtfsFormater(GeoLib):
             start_date = first_stop["end_date"]
             end_date = next_stop["start_date"]
 
-            object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
-            if object_id in self._temp_interpolated_points_cache:
-                line_geom_remaining = self._temp_interpolated_points_cache[object_id]["line_geom_remaining"]
-                interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
-                interpolation_value = self._temp_interpolated_points_cache[object_id]["interpolation_value"]
+            # object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
+            # if object_id in self._temp_interpolated_points_cache:
+            #     line_geom_remaining = self._temp_interpolated_points_cache[object_id]["line_geom_remaining"]
+            #     interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
+            #     interpolation_value = self._temp_interpolated_points_cache[object_id]["interpolation_value"]
+            #
+            # else:
+            line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(next_stop, line_geom_remaining)
 
-            else:
-                line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(next_stop, line_geom_remaining)
+            # no need the first and the last to avoid duplicates
+            interpolation_value = int(self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
+            if interpolation_value == 0:
+                interpolation_value = 1
 
-                # no need the first and the last to avoid duplicates
-                interpolation_value = int(self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
+            interpolated_points = tuple(
+                line_stop_geom.interpolate(value, normalized=True)
+                for value in np.linspace(0, 1, interpolation_value)
+            )
 
-                interpolated_points = tuple(
-                    line_stop_geom.interpolate(value, normalized=True)
-                    for value in np.linspace(0, 1, interpolation_value)
-                )
-
-                self._temp_interpolated_points_cache[object_id] = {
-                    "interpolated_points": interpolated_points,
-                    "line_geom_remaining": line_geom_remaining,
-                    "interpolation_value": interpolation_value
-                }
+            # self._temp_interpolated_points_cache[object_id] = {
+            #     "interpolated_points": interpolated_points,
+            #     "line_geom_remaining": line_geom_remaining,
+            #     "interpolation_value": interpolation_value
+            # }
 
             interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()
             interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
