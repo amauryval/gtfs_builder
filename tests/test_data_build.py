@@ -82,7 +82,7 @@ def test_data_processing_with_shape_id_computed(credentials):
     assert base_stops.columns.tolist() == ['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color']
 
     moving_stops = sp.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (383, 14)
+    assert moving_stops.shape == (764, 14)
     assert moving_stops.columns.tolist() == ['start_date', 'end_date', 'stop_code', 'x', 'y', 'geometry', 'stop_name', 'pos', 'route_type', 'route_long_name', 'route_short_name', 'direction_id', 'shape_id', 'trip_id']
 
 

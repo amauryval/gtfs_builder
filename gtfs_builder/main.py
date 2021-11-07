@@ -315,6 +315,7 @@ class GtfsFormater(GeoLib):
             ]
 
         self.logger.info(f"{len(data_completed)}")
+        data_completed = list(filter(lambda x: not isinstance(x, list), data_completed))
         data_completed = pd.concat(data_completed)
 
         data_completed["x"] = data_completed.geometry.x
@@ -404,6 +405,7 @@ class GtfsFormater(GeoLib):
         stops_line = stops_on_day.loc[stops_on_day["shape_id"] == input_line_id].copy()
 
         line_caracteristics = np.unique(stops_line[["route_type", "route_short_name"]].values)
+        # TODO remove this exception
         if len(line_caracteristics) > 2:
             raise ShapeIdError(
                 f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
