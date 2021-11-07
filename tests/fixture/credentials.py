@@ -5,7 +5,9 @@ import pytest
 def credentials():
     return {
         "study_area_name": "fake",
-        "path_data": "fixture/gtfs",
+        "input_data_dir": "fixture/gtfs",
         "transport_modes": ["bus"],
-        "days": ["friday"],
-    }
+        "date_mode": "calendar",
+        "date": "20070604",
+        "interpolation_threshold": 1000
+  }

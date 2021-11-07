@@ -20,6 +20,7 @@ from gtfs_builder.inputs_builders.stops_in import Stops
 from gtfs_builder.inputs_builders.stop_times_in import StopsTimes
 from gtfs_builder.inputs_builders.trips_in import Trips
 from gtfs_builder.inputs_builders.calendar_in import Calendar
+from gtfs_builder.inputs_builders.calendar_dates_in import CalendarDates
 from gtfs_builder.inputs_builders.routes_in import Routes
 from shapely.ops import split
 
@@ -60,7 +61,7 @@ def run_thread(processes, workers_number=4):
         ]
 
 
-def run_process(processes, workers_number=4):
+def run_process(processes, workers_number=6):
     # TODO add to geolib
 
     with ProcessPoolExecutor(max_workers=workers_number) as executor:
@@ -78,6 +79,10 @@ def run_process(processes, workers_number=4):
         ]
 
 
+class ShapeIdError(Exception):
+    pass
+
+
 class GtfsFormater(GeoLib):
     pd.options.mode.chained_assignment = None
 
@@ -88,7 +93,7 @@ class GtfsFormater(GeoLib):
     __SHAPES_FILE_CREATED_NAME = "shapes_computed.txt"
     __TRIPS_FILE_UPDATED_NAME = "trips_updated.txt"
 
-    __SUB_STOPS_RESOLUTION = 10
+    __SUB_STOPS_RESOLUTION = 200  # 1pt for each 25 meters
     __DAYS_MAPPING = [
         "monday",
         "tuesday",
@@ -124,17 +129,20 @@ class GtfsFormater(GeoLib):
         study_area_name,
         data_path,
         transport_modes: Optional[List[str]] = None,
-        days: Optional[List[str]] = None,
-        build_shape_data: bool = False
+        date_mode: str = "calendar",
+        date: Optional[List[str]] = None,
+        build_shape_data: bool = False,
+        interpolation_threshold: int = 1000
     ):
         super().__init__()
 
         self._study_area_name = study_area_name
         self.path_data = data_path
         self._transport_modes = transport_modes
-        self._days = days
-        self.build_shape_data = build_shape_data
-
+        self._date_mode = date_mode
+        self._date = date
+        self._build_shape_data = build_shape_data
+        self._interpolation_threshold = interpolation_threshold
         self.run()
 
     def run(self):
@@ -148,14 +156,17 @@ class GtfsFormater(GeoLib):
         self._stops_data = Stops(self).data
         self._trips_data = Trips(self).data
 
-        if not self.build_shape_data:
+        if not self._build_shape_data:
             self._shapes_data = Shapes(self).data
-        elif self.build_shape_data:
+        elif self._build_shape_data:
             self._compute_shapes_txt()
             self._shapes_data = Shapes(self, input_file=self.__SHAPES_FILE_CREATED_NAME).data
             self._trips_data = Trips(self, input_file=self.__TRIPS_FILE_UPDATED_NAME).data
 
-        self._calendar_data = Calendar(self).data
+        if self._date_mode == "calendar_dates":
+            self._calendar_dates_data = CalendarDates(self).data
+        elif self._date_mode == "calendar":
+            self._calendar_data = Calendar(self).data
         self._routes_data = Routes(self, transport_modes=self._transport_modes).data
 
     def _compute_shapes_txt(self):
@@ -231,35 +242,46 @@ class GtfsFormater(GeoLib):
 
     def _build_path(self):
         self.logger.info("Go to path building")
-
-        end_date = self._calendar_data["end_date"].max()
-        start_date = self._calendar_data["start_date"].min()
-
-        service_ids_to_proceed_by_day = {}
-        while start_date <= end_date:
-            start_date_day = self.__DAYS_MAPPING[start_date.weekday()]
-            service_id_working = self._calendar_data.loc[
-                (self._calendar_data[start_date_day] == "1")
-                & (
-                    (self._calendar_data["start_date"] >= start_date) | (self._calendar_data["end_date"] <= start_date)
-                )
-            ]["service_id"].to_list()
-
-            service_ids_to_proceed_by_day[start_date] = (start_date_day, service_id_working)
-
-            start_date += datetime.timedelta(days=1)
-
-        # initializing interpolated points cache
         self._temp_interpolated_points_cache = {}
 
-        # EACH DAY
-        for date, (start_date_day, service_ids_working) in service_ids_to_proceed_by_day.items():
+        if self._date_mode == "calendar_dates":
+            service_id_selected = self._calendar_dates_data.loc[self._calendar_dates_data['date'] == self._date]
+            # initializing interpolated points cache
 
-            stops_on_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service_ids_working)].copy()
+            service_id_selected = service_id_selected.groupby("date").agg({
+                "date": "first",
+                "service_id": lambda x: list(set(list(x)))
+            })
+            service_id_selected = service_id_selected.to_dict("records")
+
+
+        if self._date_mode == "calendar":
+            date = datetime.datetime.strptime(self._date, '%Y%m%d')
+
+            data = self._calendar_data.loc[
+                (self._calendar_data[date.strftime("%A").lower()] == "1")
+                & (
+                    (self._calendar_data["start_date"] <= date) & (self._calendar_data["end_date"] >= date)
+                )
+            ][["start_date", "service_id"]]
+            data = data.rename({'start_date': 'date'}, axis=1)
+
+            service_id_selected = data.groupby("date").agg({
+                "date": "first",
+                "service_id": lambda x: list(set(list(x)))
+            })
+            service_id_selected["date"] = [row.strftime("%Y%m%d") for row in service_id_selected["date"]]
+            service_id_selected = service_id_selected.to_dict("records")
+
+
+        # EACH DAY
+        for service in service_id_selected:
+
+            stops_on_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service["service_id"])].copy()
             lines_on_day = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_on_day["shape_id"].to_list())].copy()
 
-            self.logger.info(f">>> WORKING DAY - {start_date_day} {date} - {lines_on_day.shape[0]} line(s) day found")
-
+            self.logger.info(f">>> WORKING DAY - {service['date']} - {lines_on_day.shape[0]} line(s) day found")
+            date = datetime.datetime.strptime(service["date"], '%Y%m%d')
             self.compute_moving_geom(stops_on_day, lines_on_day, date)
             self.compute_fixed_geom(stops_on_day, lines_on_day)
 
@@ -289,7 +311,8 @@ class GtfsFormater(GeoLib):
         self.logger.info(f"{len(data_completed)}")
         data_completed = itertools.chain(*data_completed)
 
-        data = gpd.GeoDataFrame(data_completed).sort_values("start_date")
+        data = gpd.GeoDataFrame(data_completed)
+        data = data.sort_values("start_date")
         data = DfOptimizer(data[self.__MOVING_DATA_COLUMNS]).data
 
         data_sp = GeoDataFrame(data)
@@ -333,23 +356,31 @@ class GtfsFormater(GeoLib):
         data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_LINES_OUTPUT_PARQUET_FILE}")
 
     def compute_line(self, line, stops_on_day, date):
-        input_line_id = line["shape_id"]
-        line_stops = self._get_stops_line(input_line_id, stops_on_day)
+        try:
 
-        trips_to_proceed = set(line_stops["trip_id"].to_list())
+            input_line_id = line["shape_id"]
 
-        trip_stops_computed = [
-            self.compute_trip(date, line, line_stops, trip_id)
-            for trip_id in trips_to_proceed
-        ]
 
-        # processes = [
-        #     [self.compute_trip, date, line, line_stops, trip_id]
-        #     for trip_id in trips_to_proceed
-        # ]
-        # trip_stops_computed = run_thread(processes)
+            line_stops = self._get_stops_line(input_line_id, stops_on_day)
+
+            trips_to_proceed = set(line_stops["trip_id"].to_list())
+
+            trip_stops_computed = [
+                self.compute_trip(date, line, line_stops, trip_id)
+                for trip_id in trips_to_proceed
+            ]
+
+            # processes = [
+            #     [self.compute_trip, date, line, line_stops, trip_id]
+            #     for trip_id in trips_to_proceed
+            # ]
+            # trip_stops_computed = run_thread(processes)
+
+        except ShapeIdError:
+            return []
 
         return itertools.chain(*trip_stops_computed)
+
 
     def compute_trip(self, date, line, line_stops, trip_id):
         trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
@@ -363,7 +394,7 @@ class GtfsFormater(GeoLib):
 
         line_caracteristics = np.unique(stops_line[["route_type", "route_short_name"]].values)
         if len(line_caracteristics) > 2:
-            raise ValueError(
+            raise ShapeIdError(
                 f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
         caract_1, caract_2 = line_caracteristics
         self.logger.info(f"> Working line {input_line_id} ({caract_1}: {caract_2})")
@@ -411,26 +442,31 @@ class GtfsFormater(GeoLib):
             start_date = first_stop["end_date"]
             end_date = next_stop["start_date"]
 
-            # no need the first and the last to avoid duplicates
-            interpolated_datetime = pd.date_range(start_date, end_date, periods=self.__SUB_STOPS_RESOLUTION).to_list()
-            interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
-
             object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
             if object_id in self._temp_interpolated_points_cache:
                 line_geom_remaining = self._temp_interpolated_points_cache[object_id]["line_geom_remaining"]
                 interpolated_points = self._temp_interpolated_points_cache[object_id]["interpolated_points"]
+                interpolation_value = self._temp_interpolated_points_cache[object_id]["interpolation_value"]
 
             else:
                 line_stop_geom, line_geom_remaining = self._get_dedicated_line_from_stop(next_stop, line_geom_remaining)
+
+                # no need the first and the last to avoid duplicates
+                interpolation_value = int(self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
+
                 interpolated_points = tuple(
                     line_stop_geom.interpolate(value, normalized=True)
-                    for value in np.linspace(0, 1, self.__SUB_STOPS_RESOLUTION)
+                    for value in np.linspace(0, 1, interpolation_value)
                 )
 
                 self._temp_interpolated_points_cache[object_id] = {
                     "interpolated_points": interpolated_points,
-                    "line_geom_remaining": line_geom_remaining
+                    "line_geom_remaining": line_geom_remaining,
+                    "interpolation_value": interpolation_value
                 }
+
+            interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()
+            interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
 
             interpolated_data = zip(interpolated_datetime_pairs, interpolated_points)
 

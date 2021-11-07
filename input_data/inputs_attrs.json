@@ -44,6 +44,11 @@
         "start_date": "object",
         "end_date": "object"
     },
+    "calendar_dates.txt": {
+        "service_id": "str",
+        "date": "string",
+        "exception_type": "category"
+    },
     "routes.txt": {
         "route_id": "category",
         "agency_id": "category",

@@ -39,6 +39,6 @@ class Routes(OpenGtfs):
     def __filter_by_route_types(self, transport_modes: List[str]):
         transport_mode_column = "route_type"
         self._input_data = self._input_data.loc[self._input_data[transport_mode_column].isin(transport_modes)]
-
+        #TODO list all route type
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({transport_mode_column}")

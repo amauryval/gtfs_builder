@@ -1,5 +1,7 @@
 from gtfs_builder.core.core import OpenGtfs
 
+import pandas as pd
+
 
 class CalendarDates(OpenGtfs):
 
@@ -9,3 +11,8 @@ class CalendarDates(OpenGtfs):
 
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{input_file}' is empty")
+
+        # self._format_date_column()
+
+    def _format_date_column(self):
+        self._input_data["date"] = pd.to_datetime(self._input_data['date'], format='%Y%m%d')
