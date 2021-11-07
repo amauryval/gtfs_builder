@@ -1,6 +1,7 @@
 from gtfs_builder.core.core import OpenGtfs
 
-from uuid import uuid4
+import numpy as np
+
 
 class Stops(OpenGtfs):
 
@@ -23,7 +24,7 @@ class Stops(OpenGtfs):
     def __check_if_stops_found(self):
         if "stop_code" not in self._input_data.columns:
             self._core.logger.info('Creating a "stop_code" column...')
-            self._input_data.loc[:, "stop_code"] = str(uuid4())
+            self._input_data.loc["stop_code"] = np.arange(self._input_data.shape[0])
 
     def __get_real_stops(self):
         location_type_name = "location_type"
