@@ -13,7 +13,7 @@ load_dotenv(".gtfs.env")
 
 sessions = [
     {
-        "data": io.read_parquet(f"{os.environ['study_area_name']}_moving_stops.parq"),
+        "data": io.read_parquet(f"toulouse_moving_stops.parq"),
         "study_area": "toulouse"
     }
 ]
