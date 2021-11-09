@@ -35,9 +35,13 @@ class GtfsMain(GeoLib):
             "end_date": datetime.datetime.fromtimestamp(max(self._data["end_date"])).strftime(self.__DATE_FORMAT),
         }
 
-    def nodes_by_date_from_parquet(self, current_date):
+    def nodes_by_date_from_parquet(self, current_date, bounds):
+
         current_date = datetime.datetime.fromisoformat(current_date).timestamp()
+
         filtered_data = self._data.loc[(self._data["start_date"] <= current_date) & (self._data["end_date"] >= current_date)]
+        bounds = list(bounds)
+        filtered_data = filtered_data.cx[bounds[0]:bounds[2], bounds[1]:bounds[3]]
         filtered_data = filtered_data[["stop_code", "x", "y", "route_short_name"]]
 
         return {
