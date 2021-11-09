@@ -6,7 +6,7 @@
     "date_mode": "calendar_dates",
     "date": "20211125",
     "build_shape_id": true,
-    "interpolation_threshold": 1000,
+    "interpolation_threshold": 2000,
     "multiprocess": false
   },
   "toulouse": {
