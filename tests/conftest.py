@@ -9,11 +9,11 @@ import spatialpandas.io as sp_io
 
 from fixture.credentials import *
 
-load_dotenv(".gtfs.env")
 
 
 @pytest.fixture(scope="session")
 def flask_client():
+    load_dotenv(".gtfs.env")
 
     data = sp_io.read_parquet("fake_moving_stops.parq")
     study_area_name = "fake"
