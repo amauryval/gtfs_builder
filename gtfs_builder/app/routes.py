@@ -9,10 +9,10 @@ from gtfs_builder.app.core import GtfsMain
 def gtfs_routes(data, study_area_name):
 
     gtfs_routes = Blueprint(
-        'gtfs',
+        f"gtfs_{study_area_name}",
         __name__,
         template_folder='templates',
-        url_prefix=f"/api/v1/gtfs/{study_area_name}"
+        url_prefix=f"/api/v1/gtfs_{study_area_name}"
     )
 
     @gtfs_routes.get("/existing_study_areas")
