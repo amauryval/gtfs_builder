@@ -19,7 +19,7 @@ def gtfs_routes(data, study_area_name):
     def existing_study_areas():
         try:
 
-            input_data = jsonify(os.environ['STUDY_AREA_LIST'].split(","))
+            input_data = jsonify(os.environ['AREAS_LIST'].split(","))
             input_data.headers.add('Access-Control-Allow-Origin', '*')
 
             return input_data

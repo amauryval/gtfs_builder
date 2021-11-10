@@ -8,7 +8,7 @@ import json
 
 
 def remove_output_file():
-    files_to_remove = ["fake_base_lines_data.parq", "fake_base_stops_data.parq", "fake_moving_stops.parq"]
+    files_to_remove = ["fake_base_lines_data.parq", "fake_base_stops_data.parq", "_fake_moving_stops.parq"]
 
     for input_file in files_to_remove:
         if os.path.isfile(input_file):
