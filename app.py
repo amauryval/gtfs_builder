@@ -1,22 +1,16 @@
-import os
-
 from flask import Flask
 from flask_cors import CORS
-
-from dotenv import load_dotenv
 
 from gtfs_builder.app.routes import gtfs_routes
 
 from spatialpandas import io
-
-load_dotenv(".gtfs.env")
 
 sessions = [
     {
         "data": io.read_parquet(f"{study_area}_moving_stops.parq"),
         "study_area": study_area
     }
-    for study_area in os.environ["AREAS_LIST"].split(",")
+    for study_area in ["ter", "toulouse"]
 ]
 
 

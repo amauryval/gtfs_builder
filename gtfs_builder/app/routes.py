@@ -6,7 +6,7 @@ from flask import request
 from gtfs_builder.app.core import GtfsMain
 
 
-def gtfs_routes(data, study_area_name):
+def gtfs_routes(data, study_area_name, areas_list):
 
     gtfs_routes = Blueprint(
         f"gtfs_{study_area_name}",
@@ -19,7 +19,7 @@ def gtfs_routes(data, study_area_name):
     def existing_study_areas():
         try:
 
-            input_data = jsonify(os.environ['AREAS_LIST'].split(","))
+            input_data = jsonify(areas_list)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
 
             return input_data

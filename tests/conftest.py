@@ -10,16 +10,14 @@ import spatialpandas.io as sp_io
 from fixture.credentials import *
 
 
-
 @pytest.fixture(scope="session")
 def flask_client():
-    load_dotenv(".gtfs.env")
 
     data = sp_io.read_parquet("fake_moving_stops.parq")
     study_area_name = "fake"
 
     app = Flask(__name__)
-    app.register_blueprint(gtfs_routes(data, study_area_name), url_prefix="")
+    app.register_blueprint(gtfs_routes(data, study_area_name, areas_list=["fake"]), url_prefix="")
     app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
     app.config['JSON_SORT_KEYS'] = False
     app.config['DEBUG'] = True
