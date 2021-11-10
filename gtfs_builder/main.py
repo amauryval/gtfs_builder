@@ -112,13 +112,10 @@ class GtfsFormater(GeoLib):
         "y",
         "geometry",
         "stop_name",
-        "pos",
         "route_type",
         "route_long_name",
         "route_short_name",
         "direction_id",
-        "shape_id",
-        "trip_id"
     ]
 
     __MOVING_STOPS_OUTPUT_PARQUET_FILE = "moving_stops.parq"
@@ -322,15 +319,27 @@ class GtfsFormater(GeoLib):
         data_completed["y"] = data_completed.geometry.y
 
 
-        data = gpd.GeoDataFrame(data_completed)
-        data = data[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
+        data_sp = GeoDataFrame(data_completed)
+        data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
         # data = DfOptimizer(data).data
 
-        data_sp = GeoDataFrame(data)
         data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
         data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
-        data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}")
+        data_sp = data_sp.astype({
+            "start_date": "float",
+            "end_date": "float",
+            "x": "float",
+            "y": "float",
+            "stop_name": "category",
+            "stop_code": "category",
+            "route_type": "category",
+            "route_long_name": "category",
+            "route_short_name": "category",
+            "direction_id": "category",
+        })
+
+        data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
 
     def compute_fixed_geom(self, stops_data, lines_data):
         stops_data_copy = stops_data.copy(deep=True)
@@ -346,7 +355,7 @@ class GtfsFormater(GeoLib):
         }).dropna()
         stops_data = gpd.GeoDataFrame(stops)
         data_sp = GeoDataFrame(stops_data)
-        data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_STOPS_OUTPUT_PARQUET_FILE}")
+        data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
 
         #TODO improve it....
         lines = stops_data_copy[
@@ -365,7 +374,7 @@ class GtfsFormater(GeoLib):
         })
         lines_data = gpd.GeoDataFrame(lines)
         data_sp = GeoDataFrame(lines_data)
-        data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_LINES_OUTPUT_PARQUET_FILE}")
+        data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_LINES_OUTPUT_PARQUET_FILE}", compression='gzip')
 
     def compute_line(self, line, stops_on_day, date):
         try:
