@@ -1,0 +1,69 @@
+name: RunTest
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'run_db')"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Miniconda
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" = "Linux" ]]; then
+            MINICONDA_FILENAME=Miniconda3-latest-Linux-x86_64.sh
+          elif [[ "${{ runner.os }}" = "macOS" ]]; then
+            MINICONDA_FILENAME=Miniconda3-latest-MacOSX-x86_64.sh
+          elif [[ "${{ runner.os }}" = "Windows" ]]; then
+            MINICONDA_FILENAME=Miniconda3-latest-Windows-x86_64.exe
+          fi
+          curl -L -o $MINICONDA_FILENAME "https://repo.anaconda.com/miniconda/$MINICONDA_FILENAME"
+          bash ${MINICONDA_FILENAME} -b -f -p $HOME/miniconda3
+
+      - name: Setup paths
+        shell: bash
+        run: |
+          echo "$HOME/miniconda3/bin" >> $GITHUB_PATH
+          echo "$HOME/miniconda3/Scripts" >> $GITHUB_PATH
+          if [ "${{ matrix.os }}" != "windows-latest" ]; then
+            echo "CONDA_EXEC=${CONDA}/bin/conda"
+          else
+            echo "CONDA_EXEC=C:\Miniconda\condabin\conda.bat"
+          fi
+
+      - name: Configure conda
+        env:
+          CONDA_REQS: "conda conda-verify"
+        run: |
+          conda config --set auto_update_conda off
+          conda install --yes --quiet $CONDA_REQS
+          conda install --yes --quiet mamba -c conda-forge
+          mamba env create --file environment.yml
+
+      - name: Create env file
+        run: |
+          touch .env
+          echo DB_URL=${{ secrets.DB_URL }} >> .env
+          echo OVERWRITE_DB=${{ secrets.OVERWRITE_DB }} >> .env
+          echo JSON_SCHEMA_SOURCE=${{ secrets.JSON_SCHEMA_SOURCE }} >> .env
+          echo YML_SOURCE=${{ secrets.YML_SOURCE }} >> .env
+          echo DB_SCHEMA=${{ secrets.DB_SCHEMA }} >> .env
+          cat .env
+
+      - name: Run tests
+        shell: bash
+        run: |
+          source ~/miniconda3/etc/profile.d/conda.sh
+          conda activate gtfs_builder
+          python -m pytest --cov=gtfs_builder --cov-report=xml tests/
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
