@@ -1,3 +1,6 @@
+*.gpkg*
+.idea
+input_data/*.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -102,3 +105,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+/.gtfs.env
+*.parq
+*.7z
+
+shapes_computed.txt
+trips_updated.txt
