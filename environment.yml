@@ -9,9 +9,8 @@ dependencies:
   - flask-cors=3.0.8
   - gunicorn=20.1.0
   - geolib=0.28.2
+  - spatialpandas=0.4.3
   - python-dotenv=0.15.0
-  - matplotlib=3.4.3
-  - descartes=1.1.0
-  - datashader=0.13.0
-  - holoviews=1.14.6
   - pytest=6.2.5
+  - pytest=6.2.5
+  - pytest-cov=3.0.0
