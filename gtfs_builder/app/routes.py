@@ -12,7 +12,7 @@ def gtfs_routes(data, study_area_name, areas_list):
         f"gtfs_{study_area_name}",
         __name__,
         template_folder='templates',
-        url_prefix=f"/api/v1/gtfs_{study_area_name}"
+        url_prefix=f"/api/v1/gtfs_builder/{study_area_name}"
     )
 
     @gtfs_routes.get("/existing_study_areas")
