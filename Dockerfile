@@ -22,6 +22,9 @@ RUN /venv/bin/conda-unpack
 
 FROM debian:latest AS runtime
 
+COPY data/ter_moving_stops.parq ter_moving_stops.parq
+COPY data/toulouse_moving_stops.parq toulouse_moving_stops.parq
+
 COPY app.py app.py
 # no need to run data processing
 # COPY db_run.py db_run.py

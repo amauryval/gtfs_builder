@@ -18,8 +18,6 @@ data = {
 
 app = Flask(__name__)
 CORS(app)
-
-
 app.register_blueprint(gtfs_routes(data, areas_list))
 
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
