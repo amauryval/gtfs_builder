@@ -6,17 +6,18 @@ from flask import request
 from gtfs_builder.app.core import GtfsMain
 
 
-def gtfs_routes(data, study_area_name, areas_list):
+def gtfs_routes(data, areas_list):
 
     gtfs_routes = Blueprint(
-        f"gtfs_{study_area_name}",
+        f"gtfs",
         __name__,
         template_folder='templates',
-        url_prefix=f"/api/v1/gtfs_builder/{study_area_name}"
+        url_prefix=f"/api/v1/gtfs_builder/"
     )
 
-    @gtfs_routes.get("/existing_study_areas")
-    def existing_study_areas():
+    @gtfs_routes.get("<area>/existing_study_areas")
+    def existing_study_areas(area):
+
         try:
 
             input_data = jsonify(areas_list)
@@ -27,16 +28,16 @@ def gtfs_routes(data, study_area_name, areas_list):
         except Exception as exc:
             return jsonify(exception=exc), 204
 
-    @gtfs_routes.get("/moving_nodes_by_date")
-    def moving_nodes_by_date():
+    @gtfs_routes.get("<area>/moving_nodes_by_date")
+    def moving_nodes_by_date(area):
         arg_keys = {
             "current_date": request.args.get("current_date", type=str),
             "bounds": request.args.get("bounds", type=str)
         }
-
+        data_from_area = data[area]
         try:
             bounds = map(float, arg_keys["bounds"].split(","))
-            input_data = GtfsMain(data).nodes_by_date_from_parquet(arg_keys["current_date"], bounds)
+            input_data = GtfsMain(data_from_area["data"]).nodes_by_date_from_parquet(arg_keys["current_date"], bounds)
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')
@@ -46,11 +47,11 @@ def gtfs_routes(data, study_area_name, areas_list):
         except Exception as exc:
             return jsonify(exception=exc), 204
 
-    @gtfs_routes.get("/range_dates")
-    def range_dates():
-
+    @gtfs_routes.get("<area>/range_dates")
+    def range_dates(area):
+        data_from_area = data[area]
         try:
-            input_data = GtfsMain(data).context_data_from_parquet()
+            input_data = GtfsMain(data_from_area["data"]).context_data_from_parquet()
 
             input_data = jsonify(input_data)
             input_data.headers.add('Access-Control-Allow-Origin', '*')

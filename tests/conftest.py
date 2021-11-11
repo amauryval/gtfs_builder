@@ -13,11 +13,19 @@ from fixture.credentials import *
 @pytest.fixture(scope="session")
 def flask_client():
 
-    data = sp_io.read_parquet("fake_moving_stops.parq")
-    study_area_name = "fake"
+    areas_list = ["fake"]
+
+    data = {
+        study_area: {
+            "data": sp_io.read_parquet(f"{study_area}_moving_stops.parq"),
+            "study_area": study_area
+        }
+        for study_area in areas_list
+    }
+
 
     app = Flask(__name__)
-    app.register_blueprint(gtfs_routes(data, study_area_name, areas_list=["fake"]), url_prefix="")
+    app.register_blueprint(gtfs_routes(data, areas_list=areas_list), url_prefix="")
     app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
     app.config['JSON_SORT_KEYS'] = False
     app.config['DEBUG'] = True
