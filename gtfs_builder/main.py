@@ -116,6 +116,8 @@ class GtfsFormater(GeoLib):
         "route_long_name",
         "route_short_name",
         "direction_id",
+        "route_id",
+        "trip_id"
     ]
 
     __MOVING_STOPS_OUTPUT_PARQUET_FILE = "moving_stops.parq"
@@ -319,8 +321,8 @@ class GtfsFormater(GeoLib):
         data_completed["y"] = data_completed.geometry.y
 
 
-        # data_sp = GeoDataFrame(data_completed)
-        data_sp = data_completed[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
+        data_sp = GeoDataFrame(data_completed)
+        data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
         # data = DfOptimizer(data).data
 
         data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
@@ -337,6 +339,8 @@ class GtfsFormater(GeoLib):
             "route_long_name": "category",
             "route_short_name": "category",
             "direction_id": "category",
+            "route_id": "category",
+            "trip_id": "category",
         })
 
         data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
@@ -572,6 +576,5 @@ class GtfsFormater(GeoLib):
         if end_date is None:
             end_date = datetime.max
         return DateTimeRange(start_date, end_date)
-
 
 

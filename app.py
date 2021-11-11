@@ -5,8 +5,13 @@ from gtfs_builder.app.routes import gtfs_routes
 
 import geopandas as gpd
 
+from dotenv import load_dotenv
+
+load_dotenv(".gtfs_builder.env")
+
 
 areas_list = ["ter", "toulouse"]
+
 
 data = {
     study_area: {

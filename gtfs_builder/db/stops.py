@@ -5,12 +5,9 @@ from geoalchemy2 import Geometry
 
 from sqlalchemy import Column
 from sqlalchemy import String
-from sqlalchemy import Float
 
-from sqlalchemy import DateTime, PrimaryKeyConstraint
-from sqlalchemy.dialects.postgresql import DATE
+
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
-from sqlalchemy import PrimaryKeyConstraint
 
 
 class StopsGeom(Base, CommonQueries):
@@ -23,7 +20,6 @@ class StopsGeom(Base, CommonQueries):
     stop_name = Column(String)
     study_area_name = Column(String, index=True)
     geometry = Column(Geometry('POINT', 4326))
-    pos = Column(String)
-    route_type = Column(String)  #array string ?
+    route_type = Column(String)
     route_long_name = Column(String)
     route_short_name = Column(String)
