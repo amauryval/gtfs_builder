@@ -53,7 +53,7 @@ class GtfsMain(GeoLib):
             ST_X(geometry) as x,
             ST_Y(geometry) as y, 
             stop_name,
-            route_short_name        
+            route_type        
         FROM 
             gtfs_data.stops_times
         WHERE
