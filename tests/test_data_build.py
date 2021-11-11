@@ -3,7 +3,7 @@ import os
 from gtfs_builder.main import GtfsFormater
 
 import spatialpandas.io as sp_io
-import pandas as pd
+import geopandas as gpd
 import json
 
 
@@ -26,15 +26,15 @@ def test_data_processing_full_data_thresh_2(credentials):
         build_shape_data=False,
         interpolation_threshold=500
     )
-    base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
+    base_lines = gpd.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (9, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
-    base_stops = sp_io.read_parquet("fake_base_stops_data.parq")
+    base_stops = gpd.read_parquet("fake_base_stops_data.parq")
     assert base_stops.shape == (8, 8)
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
-    moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
+    moving_stops = gpd.read_parquet("fake_moving_stops.parq")
     assert moving_stops.shape == (436, 11)
     assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
 
@@ -50,15 +50,15 @@ def test_data_processing_full_data_calendar_dates(credentials):
         build_shape_data=False,
         interpolation_threshold=500
     )
-    base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
+    base_lines = gpd.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (9, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
-    base_stops = sp_io.read_parquet("fake_base_stops_data.parq")
+    base_stops = gpd.read_parquet("fake_base_stops_data.parq")
     assert base_stops.shape == (8, 8)
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
-    moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
+    moving_stops = gpd.read_parquet("fake_moving_stops.parq")
     assert moving_stops.shape == (436, 11)
     assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
 
@@ -75,15 +75,15 @@ def test_data_processing_with_shape_id_computed(credentials):
         build_shape_data=True,
         interpolation_threshold=200
     )
-    base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
+    base_lines = gpd.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (9, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
-    base_stops = sp_io.read_parquet("fake_base_stops_data.parq")
+    base_stops = gpd.read_parquet("fake_base_stops_data.parq")
     assert base_stops.shape == (8, 8)
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
-    moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
+    moving_stops = gpd.read_parquet("fake_moving_stops.parq")
     assert moving_stops.shape == (764, 11)
     assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
 
@@ -100,14 +100,14 @@ def test_data_processing_full_data_tresh_1(credentials):
         build_shape_data=False,
         interpolation_threshold=1000
     )
-    base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
+    base_lines = gpd.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (9, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
-    base_stops = sp_io.read_parquet("fake_base_stops_data.parq")
+    base_stops = gpd.read_parquet("fake_base_stops_data.parq")
     assert base_stops.shape == (9, 8)
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
-    moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
+    moving_stops = gpd.read_parquet("fake_moving_stops.parq")
     assert moving_stops.shape == (300, 11)
     assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])

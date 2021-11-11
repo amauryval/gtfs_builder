@@ -319,8 +319,8 @@ class GtfsFormater(GeoLib):
         data_completed["y"] = data_completed.geometry.y
 
 
-        data_sp = GeoDataFrame(data_completed)
-        data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
+        # data_sp = GeoDataFrame(data_completed)
+        data_sp = data_completed[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
         # data = DfOptimizer(data).data
 
         data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]

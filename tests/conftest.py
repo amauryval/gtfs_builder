@@ -3,9 +3,8 @@ import pytest
 from gtfs_builder.app.routes import gtfs_routes
 
 from flask import Flask
-from dotenv import load_dotenv
 
-import spatialpandas.io as sp_io
+import geopandas as gpd
 
 from fixture.credentials import *
 
@@ -17,7 +16,7 @@ def flask_client():
 
     data = {
         study_area: {
-            "data": sp_io.read_parquet(f"{study_area}_moving_stops.parq"),
+            "data": gpd.read_parquet(f"{study_area}_moving_stops.parq"),
             "study_area": study_area
         }
         for study_area in areas_list

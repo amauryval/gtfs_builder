@@ -30,7 +30,7 @@ class GtfsMain(GeoLib):
 
     def context_data_from_parquet(self):
         return {
-            "data_bounds": self._data.geometry.total_bounds,
+            "data_bounds": list(self._data.geometry.total_bounds),
             "start_date": datetime.datetime.fromtimestamp(min(self._data["start_date"])).strftime(self.__DATE_FORMAT),
             "end_date": datetime.datetime.fromtimestamp(max(self._data["end_date"])).strftime(self.__DATE_FORMAT),
         }

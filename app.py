@@ -3,13 +3,14 @@ from flask_cors import CORS
 
 from gtfs_builder.app.routes import gtfs_routes
 
-from spatialpandas import io
+import geopandas as gpd
+
 
 areas_list = ["ter", "toulouse"]
 
 data = {
     study_area: {
-        "data": io.read_parquet(f"{study_area}_moving_stops.parq"),
+        "data": gpd.read_parquet(f"{study_area}_moving_stops.parq"),
         "study_area": study_area
     }
     for study_area in areas_list
