@@ -4,8 +4,8 @@ from typing import Optional
 
 import os
 import datetime
-import itertools
-import copy
+
+from pyproj import Geod
 
 import shapely
 from geolib import GeoLib
@@ -108,10 +108,11 @@ class GtfsFormater(GeoLib):
         "start_date",
         "end_date",
         "stop_code",
-        "x",
-        "y",
+        "pos",
         "geometry",
+        "geometry_wkb",
         "stop_name",
+        "study_area_name",
         "route_type",
         "route_long_name",
         "route_short_name",
@@ -297,8 +298,6 @@ class GtfsFormater(GeoLib):
             departure_time=[self._compute_date(date, row) for row in stops_on_day["departure_time"]],
             geometry=[self._compute_geom_precision(row, self.__COORDS_PRECISION) for row in stops_on_day["geometry"]],
         )
-        stops_on_day["x"] = stops_on_day["geometry"].x
-        stops_on_day["y"] = stops_on_day["geometry"].y
         stops_on_day = stops_on_day.rename({'arrival_time': 'start_date', 'departure_time': 'end_date'}, axis=1)
 
         if self._multiprocess:
@@ -317,26 +316,31 @@ class GtfsFormater(GeoLib):
         data_completed = list(filter(lambda x: not isinstance(x, list), data_completed))
         data_completed = pd.concat(data_completed)
 
-        data_completed["x"] = data_completed.geometry.x
-        data_completed["y"] = data_completed.geometry.y
-
-
         data_sp = GeoDataFrame(data_completed)
-        data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
+        data_sp.loc[:, "study_area_name"] = self._study_area_name
+
+        data_sp = data_sp.sort_values("start_date")[self.__MOVING_DATA_COLUMNS]
+
         # data = DfOptimizer(data).data
 
-        data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
-        data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
+        # data_sp["date_start_date"] = [row for row in data_sp["start_date"]]
+        # data_sp["date_end_date"] = [row for row in data_sp["end_date"]]
+        #
+        # data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
+        # data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
         data_sp = data_sp.astype({
-            "start_date": "float",
-            "end_date": "float",
-            "x": "float",
-            "y": "float",
+            "start_date": "datetime64[ms]",
+            "end_date": "datetime64[ms]",
+            # "start_date": "float",
+            # "end_date": "float",
+            # "x": "float",
+            # "y": "float",
             "stop_name": "category",
             "stop_code": "category",
             "route_type": "category",
-            "route_long_name": "category",
+            "study_area_name": "category",
+            # "route_long_name": "category",
             "route_short_name": "category",
             "direction_id": "category",
             "route_id": "category",
@@ -437,7 +441,6 @@ class GtfsFormater(GeoLib):
         :return: the line length
         :rtype: float
         """
-        from pyproj import Geod
 
         line_length = Geod(ellps="WGS84").geometry_length(input_geom)
 
@@ -487,7 +490,7 @@ class GtfsFormater(GeoLib):
         for column in trip_data.columns:
             if column not in ["start_date", "end_date", "pos", "geometry"]:
                 trip_data.loc[:, column] = trip_data[column].unique()[0]
-
+            trip_data["geometry_wkb"] = [geom.wkb_hex for geom in trip_data["geometry"]]
         return trip_data
 
     def _compute_new_nodes(self, pair, line_geom_remaining):
@@ -538,7 +541,6 @@ class GtfsFormater(GeoLib):
         interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
         gdf_found["start_date"] = list(map(lambda x: x[0], interpolated_datetime_pairs))
         gdf_found["end_date"] = list(map(lambda x: x[-1], interpolated_datetime_pairs))
-
         return gdf_found
 
     def _get_dedicated_line_from_stop(self, first_stop_geom, next_stop_geom, line_shape_geom_remained):

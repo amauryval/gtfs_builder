@@ -1,14 +1,21 @@
 
 
 from geolib import GeoLib
+import re
+import os
 
 from sqlalchemy import and_
 
 from sqlalchemy.sql.expression import literal
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy import func
+import psycopg2
+import psycopg2.extras
+
+import itertools
 
 import datetime
+
 
 def sql_query_to_list(query):
     return [
@@ -19,31 +26,74 @@ def sql_query_to_list(query):
         for row in query.all()
     ]
 
+def querying(connection, query):
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor.execute(query)
+    result = [{col:value for col, value in row.items()} for row in cursor.fetchall()]
+
+    cursor.close()
+    return result
+
+
 
 class GtfsMain(GeoLib):
     __DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-    def __init__(self, data):
+    def __init__(self, conn, area):
         super().__init__(logger_name=None)
 
-        self._data = data
+        self._area = area
+        self._connection = conn
 
-    def context_data_from_parquet(self):
+    def nodes_by_date_from_db(self, current_date, bounds):
+
+        bounds = list(bounds)
+        nodes_query = f"""
+        SELECT 
+            ST_X(geometry) as x,
+            ST_Y(geometry) as y, 
+            stop_name,
+            route_short_name        
+        FROM 
+            gtfs_data.stops_times
+        WHERE
+            study_area_name = '{self._area}'
+            AND geometry && ST_MakeEnvelope({bounds[0]}, {bounds[1]}, {bounds[2]}, {bounds[3]}, 4326)
+            AND start_date <= '{current_date}'::timestamp AND end_date >= '{current_date}'::timestamp
+        """
+        nodes_res = querying(self._connection, nodes_query)
+
         return {
-            "data_bounds": list(self._data.geometry.total_bounds),
-            "start_date": datetime.datetime.fromtimestamp(min(self._data["start_date"])).strftime(self.__DATE_FORMAT),
-            "end_date": datetime.datetime.fromtimestamp(max(self._data["end_date"])).strftime(self.__DATE_FORMAT),
+            "data_geojson": nodes_res
         }
 
-    def nodes_by_date_from_parquet(self, current_date, bounds):
 
-        current_date = datetime.datetime.fromisoformat(current_date).timestamp()
+    def context_data_from_db(self):
 
-        filtered_data = self._data.loc[(self._data["start_date"] <= current_date) & (self._data["end_date"] >= current_date)]
-        bounds = list(bounds)
-        filtered_data = filtered_data.cx[bounds[0]:bounds[2], bounds[1]:bounds[3]]
-        filtered_data = filtered_data[["stop_code", "x", "y", "route_short_name"]]
+        bounds_query = f"""
+        SELECT 
+            ST_EXTENT(geometry) as extent
+        FROM 
+            gtfs_data.stops_times
+        WHERE
+            study_area_name = '{self._area}'
+            AND pos = 0
+        """
+        bounds_res = querying(self._connection, bounds_query)
+
+        date_bounds_query = f"""
+        SELECT 
+            min(start_date) as start_date,
+            max(end_date) as end_date
+        FROM 
+            gtfs_data.stops_times
+        WHERE
+            study_area_name = '{self._area}'
+        """
+        date_bounds_res = querying(self._connection, date_bounds_query)
 
         return {
-            "data_geojson": filtered_data.to_dict("records")
+            "data_bounds": list(map(lambda x: float(x), list(itertools.chain(*list(map(lambda x: x.split(" "), bounds_res[0]["extent"].replace("BOX(", "").replace(")", "").split(','))))))),
+            "start_date": date_bounds_res[0]["start_date"].strftime(self.__DATE_FORMAT),
+            "end_date": date_bounds_res[0]["end_date"].strftime(self.__DATE_FORMAT),
         }

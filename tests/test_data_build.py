@@ -34,8 +34,8 @@ def test_data_processing_full_data_thresh_2(credentials):
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
     moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (436, 13)
-    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
+    assert moving_stops.shape == (436, 14)
+    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "study_area_name", "geometry", "geometry_wkb", 'stop_code', 'pos', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
 
 
 def test_data_processing_full_data_calendar_dates(credentials):
@@ -58,8 +58,8 @@ def test_data_processing_full_data_calendar_dates(credentials):
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
     moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (436, 13)
-    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
+    assert moving_stops.shape == (436, 14)
+    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "study_area_name", "geometry", "geometry_wkb", 'stop_code', 'pos', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
 
 
 def test_data_processing_with_shape_id_computed(credentials):
@@ -83,8 +83,8 @@ def test_data_processing_with_shape_id_computed(credentials):
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
     moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (764, 13)
-    assert set(moving_stops.columns.tolist()) == set(['start_date', "route_id", "trip_id", 'end_date', "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
+    assert moving_stops.shape == (764, 14)
+    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "study_area_name", "geometry", "geometry_wkb", 'stop_code', 'pos', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
 
 
 def test_data_processing_full_data_tresh_1(credentials):
@@ -108,5 +108,5 @@ def test_data_processing_full_data_tresh_1(credentials):
     assert set(base_stops.columns.tolist()) == set(['stop_code', 'geometry', 'stop_name', 'route_short_name', 'route_desc', 'route_type', 'route_color', 'route_text_color'])
 
     moving_stops = sp_io.read_parquet("fake_moving_stops.parq")
-    assert moving_stops.shape == (300, 13)
-    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "geometry", 'stop_code', 'x', 'y', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
+    assert moving_stops.shape == (300, 14)
+    assert set(moving_stops.columns.tolist()) == set(['start_date', 'end_date', "route_id", "trip_id", "study_area_name", "geometry", "geometry_wkb", 'stop_code', 'pos', 'stop_name', 'route_type', 'route_long_name', 'route_short_name', 'direction_id'])
