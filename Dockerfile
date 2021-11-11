@@ -41,4 +41,4 @@ USER ava
 SHELL ["/bin/bash", "-c"]
 
 ENTRYPOINT source /venv/bin/activate && \
-           gunicorn --workers=2 -b 0.0.0.0:5000 app:app
+           gunicorn --workers=2 -b 0.0.0.0:5002 app:app
