@@ -5,7 +5,7 @@ from flask import request
 
 from gtfs_builder.app.core import GtfsMain
 
-
+# An ugly class to load dataframe on-demand but without mutli user capabilities... only to reduce memory server usage...
 # class LoadData:
 #     _data = None
 #
@@ -16,8 +16,11 @@ from gtfs_builder.app.core import GtfsMain
 #         """
 #         unsed
 #
-#         data_loader.load_data(area)
-#         data_loader.data
+#         Exemple:
+#
+#         >>> data_loader = LoadData()
+#         >>> data_loader = LoadData().load_data(area)
+#         >>> data_loader.data
 #
 #         """
 #         if self._current_data != area:
