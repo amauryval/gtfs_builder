@@ -15,6 +15,7 @@ import psycopg2.extras
 import itertools
 
 import datetime
+import geopandas as gpd
 
 
 def sql_query_to_list(query):
@@ -29,7 +30,7 @@ def sql_query_to_list(query):
 def querying(connection, query):
     cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute(query)
-    result = [{col:value for col, value in row.items()} for row in cursor.fetchall()]
+    result = [dict(row) for row in cursor.fetchall()]
 
     cursor.close()
     return result
@@ -55,12 +56,11 @@ class GtfsMain(GeoLib):
             stop_name,
             route_type        
         FROM 
-            gtfs_data.stops_times
+            gtfs_data.stops_times_{self._area}
         WHERE
-            study_area_name = '{self._area}'
-            AND geometry && ST_MakeEnvelope({bounds[0]}, {bounds[1]}, {bounds[2]}, {bounds[3]}, 4326)
-            AND start_date <= '{current_date}'::timestamp AND end_date >= '{current_date}'::timestamp
+            start_date <= '{current_date}' AND end_date >= '{current_date}'
         """
+        # print(nodes_query)
         nodes_res = querying(self._connection, nodes_query)
 
         return {
@@ -74,10 +74,9 @@ class GtfsMain(GeoLib):
         SELECT 
             ST_EXTENT(geometry) as extent
         FROM 
-            gtfs_data.stops_times
+            gtfs_data.stops_times_{self._area}
         WHERE
-            study_area_name = '{self._area}'
-            AND pos = 0
+            pos = 0
         """
         bounds_res = querying(self._connection, bounds_query)
 
@@ -86,9 +85,7 @@ class GtfsMain(GeoLib):
             min(start_date) as start_date,
             max(end_date) as end_date
         FROM 
-            gtfs_data.stops_times
-        WHERE
-            study_area_name = '{self._area}'
+            gtfs_data.stops_times_{self._area}
         """
         date_bounds_res = querying(self._connection, date_bounds_query)
 
