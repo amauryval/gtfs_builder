@@ -1,9 +1,32 @@
-import os
+
 from flask import Blueprint
 from flask import jsonify
 from flask import request
 
 from gtfs_builder.app.core import GtfsMain
+
+
+# class LoadData:
+#     _data = None
+#
+#     def __init__(self):
+#         self._current_data = None
+#
+#     def load_data(self, area):
+#         """
+#         unsed
+#
+#         data_loader.load_data(area)
+#         data_loader.data
+#
+#         """
+#         if self._current_data != area:
+#             self._data = io.read_parquet(f"sp_{area}_moving_stops.parq")
+#             self._current_data = area
+#
+#     @property
+#     def data(self):
+#         return self._data
 
 
 def gtfs_routes(data, areas_list):

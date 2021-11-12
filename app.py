@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from flask_cors import CORS
 
@@ -5,20 +6,21 @@ from gtfs_builder.app.routes import gtfs_routes
 
 from spatialpandas import io
 
-areas_list = ["ter", "toulouse"]
+from dotenv import load_dotenv
+
+load_dotenv(".gtfs_builder.env")
 
 data = {
     study_area: {
-        "data": io.read_parquet(f"{study_area}_moving_stops.parq"),
+        "data": io.read_parquet(f"sp_{study_area}_moving_stops.parq", columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]),
         "study_area": study_area
     }
-    for study_area in areas_list
+    for study_area in os.environ["AREAS"].split(",")
 }
-
 
 app = Flask(__name__)
 CORS(app)
-app.register_blueprint(gtfs_routes(data, areas_list))
+app.register_blueprint(gtfs_routes(data, os.environ["AREAS"].split(",")))
 
 app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 app.config['JSON_SORT_KEYS'] = False

@@ -1,13 +1,4 @@
 
-
-from geolib import GeoLib
-
-from sqlalchemy import and_
-
-from sqlalchemy.sql.expression import literal
-from sqlalchemy.sql.expression import literal_column
-from sqlalchemy import func
-
 import datetime
 
 def sql_query_to_list(query):
@@ -20,12 +11,10 @@ def sql_query_to_list(query):
     ]
 
 
-class GtfsMain(GeoLib):
+class GtfsMain:
     __DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     def __init__(self, data):
-        super().__init__(logger_name=None)
-
         self._data = data
 
     def context_data_from_parquet(self):
@@ -42,7 +31,8 @@ class GtfsMain(GeoLib):
         filtered_data = self._data.loc[(self._data["start_date"] <= current_date) & (self._data["end_date"] >= current_date)]
         bounds = list(bounds)
         filtered_data = filtered_data.cx[bounds[0]:bounds[2], bounds[1]:bounds[3]]
-        filtered_data = filtered_data[["stop_code", "x", "y", "route_short_name"]]
+        # filtered_data["coords"] = [[row.x, row.y] for row in filtered_data["geometry"]]
+        filtered_data = filtered_data[["x", "y", "route_long_name", "route_type"]]
 
         return {
             "data_geojson": filtered_data.to_dict("records")
