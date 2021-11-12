@@ -16,7 +16,7 @@ def test_nodes_by_date_route(flask_client):
     output_data = response.json
     assert len(output_data["data_geojson"]) > 0
     assert isinstance(output_data["data_geojson"], list)
-    assert set(list(output_data["data_geojson"][0].keys())) == {"stop_code", "x", "y", "route_short_name"}
+    assert set(list(output_data["data_geojson"][0].keys())) == {'route_long_name', 'x', 'route_type', 'y'}
 
 
 def test_nodes_by_date_route_invalid(flask_client):
