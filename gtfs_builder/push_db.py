@@ -10,7 +10,9 @@ from psycopg2.extras import DateTimeRange
 from datetime import datetime
 
 from gtfs_builder.db.base import Base
-from gtfs_builder.db.stops_times import StopsTimes
+from gtfs_builder.db.stops_times_toulouse import StopsTimesToulouse
+from gtfs_builder.db.stops_times_ter import StopsTimesTer
+
 from shapely.geometry import Point
 
 import spatialpandas.io as sp_io
@@ -26,7 +28,7 @@ class PushDb(GeoLib):
 
     __STOPS_TIMES_COLUMNS = [
         "stop_code",
-        "study_area_name",
+        # "study_area_name",
         "start_date",
         "end_date",
         "geometry",
@@ -103,12 +105,18 @@ class PushDb(GeoLib):
             data_geom_col_renamed = data_cleaned.rename(columns={"geometry_wkb": "geometry"})
 
             data_filtered = data_geom_col_renamed[self.__STOPS_TIMES_COLUMNS]
-
-
+            if area_name == "ter":
+                data_filtered.loc[:, "direction_id"] = "null"
 
             # input_data = self.gdf_design_checker(self._engine, self.__MAIN_DB_SCHEMA, StopsTimes.__table__.name, data, epsg=4326)
             dict_data = self.df_to_dicts_list(data_filtered, 4326)
-            self.dict_list_to_db(self._engine, dict_data, self.__MAIN_DB_SCHEMA, StopsTimes.__table__.name)
+
+            if area_name == "toulouse":
+                table = StopsTimesToulouse
+            elif area_name == "ter":
+                table = StopsTimesTer
+
+            self.dict_list_to_db(self._engine, dict_data, self.__MAIN_DB_SCHEMA, table.__table__.name)
 
     @staticmethod
     def _format_validity_range(start_date=None, end_date=None):

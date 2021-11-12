@@ -315,9 +315,11 @@ class GtfsFormater(GeoLib):
         self.logger.info(f"{len(data_completed)}")
         data_completed = list(filter(lambda x: not isinstance(x, list), data_completed))
         data_completed = pd.concat(data_completed)
+        data_completed["geometry_wkb"] = [geom.wkb_hex for geom in data_completed["geometry"]]
 
         data_sp = GeoDataFrame(data_completed)
         data_sp.loc[:, "study_area_name"] = self._study_area_name
+        data_sp = data_sp.fillna("null")
 
         data_sp = data_sp.sort_values("start_date")[self.__MOVING_DATA_COLUMNS]
 
@@ -490,7 +492,6 @@ class GtfsFormater(GeoLib):
         for column in trip_data.columns:
             if column not in ["start_date", "end_date", "pos", "geometry"]:
                 trip_data.loc[:, column] = trip_data[column].unique()[0]
-            trip_data["geometry_wkb"] = [geom.wkb_hex for geom in trip_data["geometry"]]
         return trip_data
 
     def _compute_new_nodes(self, pair, line_geom_remaining):

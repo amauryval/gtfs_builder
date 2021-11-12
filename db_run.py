@@ -13,7 +13,7 @@ if __name__ == '__main__':
     data_builder = False
     data_push = True
 
-    area_names = ["toulouse"]
+    area_names = ["ter"]
 
     for area_name in area_names:
         with open("params.json") as input_file:
