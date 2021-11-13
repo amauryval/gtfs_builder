@@ -1,5 +1,5 @@
 {
-    "output_epsg": 2154,
+    "output_epsg": 4326,
     "shapes.txt": {
         "shape_id": "string",
         "shape_pt_lat": "float",

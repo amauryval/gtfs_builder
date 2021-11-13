@@ -1,4 +1,5 @@
 {
+    "output_epsg": 4326,
 	"agency.txt": {
 		"agency_id": "str",
 		"agency_name": "str",
