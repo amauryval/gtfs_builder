@@ -26,7 +26,7 @@ def gtfs_routes():
     _credentials = {
         **str_to_dict_from_regex(
             os.environ.get("ADMIN_DB_URL"),
-            ".+:\/\/(?P<user>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
+            ".+:\/\/(?P<user>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
         ),
     }
     conn = psycopg2.connect(**_credentials)

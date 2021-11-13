@@ -1,21 +1,7 @@
-
-
-from geolib import GeoLib
-import re
-import os
-
-from sqlalchemy import and_
-
-from sqlalchemy.sql.expression import literal
-from sqlalchemy.sql.expression import literal_column
-from sqlalchemy import func
 import psycopg2
 import psycopg2.extras
 
 import itertools
-
-import datetime
-import geopandas as gpd
 
 
 def sql_query_to_list(query):
@@ -37,11 +23,10 @@ def querying(connection, query):
 
 
 
-class GtfsMain(GeoLib):
+class GtfsMain:
     __DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     def __init__(self, conn, area):
-        super().__init__(logger_name=None)
 
         self._area = area
         self._connection = conn
