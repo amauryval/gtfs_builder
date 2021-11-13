@@ -5,6 +5,7 @@ from gtfs_builder.core.core import OpenGtfs
 
 
 class Routes(OpenGtfs):
+    __TRANSPORT_MODE_COLUMN = "route_type"
 
     _ROUTE_TYPE_MAPPING = {
         "0": "tramway",
@@ -23,22 +24,21 @@ class Routes(OpenGtfs):
 
         self._input_file = input_file
 
-        self.__remap_route_type()
         if transport_modes is not None:
             self.__filter_by_route_types(transport_modes)
 
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{input_file}' is empty")
 
-    def __remap_route_type(self):
-        self._input_data.replace(
-            {"route_type": self._ROUTE_TYPE_MAPPING},
-            inplace=True
-        )
+    def __get_available_transport_modes(self):
+        transport_found = list(self._input_data[self.__TRANSPORT_MODE_COLUMN].unique())
+        self._available_transport_modes = dict(filter(lambda x: x[0] in transport_found, self._ROUTE_TYPE_MAPPING.items())).values()
+
 
     def __filter_by_route_types(self, transport_modes: List[str]):
-        transport_mode_column = "route_type"
-        self._input_data = self._input_data.loc[self._input_data[transport_mode_column].isin(transport_modes)]
-        #TODO list all route type
+        self.__get_available_transport_modes()
+
+        transport_modes_to_use = dict(filter(lambda x: x[-1] in transport_modes, self._ROUTE_TYPE_MAPPING.items()))
+        self._input_data = self._input_data.loc[self._input_data[self.__TRANSPORT_MODE_COLUMN].isin(transport_modes_to_use.keys())]
         if self.is_df_empty(self._input_data):
-            raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({transport_mode_column}")
+            raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({self.__TRANSPORT_MODE_COLUMN}: Use one of {', '.join(self._available_transport_modes)}")

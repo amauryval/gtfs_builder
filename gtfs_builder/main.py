@@ -288,16 +288,16 @@ class GtfsFormater(GeoLib):
         data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
         data_sp = data_sp.astype({
-            "start_date": "float",
-            "end_date": "float",
-            "x": "float",
-            "y": "float",
+            "start_date": "uint32",
+            "end_date": "uint32",
+            "x": "float32",
+            "y": "float32",
             "stop_name": "category",
             "stop_code": "category",
-            "route_type": "category",
+            "route_type": "uint8",
             "route_long_name": "category",
             "route_short_name": "category",
-            "direction_id": "category",
+            "direction_id": "uint8",
         })
 
         data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
