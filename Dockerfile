@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3 AS build
+FROM continuumio/miniconda3:4.7.12 AS build
 
 WORKDIR /usr/src/
 
@@ -20,7 +20,7 @@ RUN /venv/bin/conda-unpack
 
 
 
-FROM debian:latest AS runtime
+FROM debian:stable-slim AS runtime
 
 COPY data/ter_moving_stops.parq ter_moving_stops.parq
 COPY data/toulouse_moving_stops.parq toulouse_moving_stops.parq
