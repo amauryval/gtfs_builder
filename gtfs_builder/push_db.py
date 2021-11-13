@@ -49,7 +49,7 @@ class PushDb(GeoLib):
         self._credentials = {
             **str_to_dict_from_regex(
                 os.environ.get("ADMIN_DB_URL"),
-                ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
+                ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
             ),
         }
 
