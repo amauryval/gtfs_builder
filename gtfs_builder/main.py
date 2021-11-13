@@ -9,6 +9,7 @@ import copy
 
 import shapely
 from geolib import GeoLib
+from geolib.misc.processing import method_processing_modes
 from itertools import chain
 import numpy as np
 import geopandas as gpd
@@ -33,50 +34,10 @@ import hashlib
 
 from psycopg2.extras import DateTimeRange
 
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
-
 from itertools import accumulate
 import operator
 
 from spatialpandas import GeoDataFrame
-
-
-def run_thread(processes, workers_number=4):
-    # TODO add to geolib
-
-    with ThreadPoolExecutor(max_workers=workers_number) as executor:
-
-        executions = []
-        for process in processes:
-            if isinstance(process, list):
-                executions.append(executor.submit(*process))
-            else:
-                executions.append(executor.submit(process))
-        # to return exceptions
-        return [
-            exe.result()
-            for exe in as_completed(executions)
-        ]
-
-
-def run_process(processes, workers_number=4):
-    # TODO add to geolib
-
-    with ProcessPoolExecutor(max_workers=workers_number) as executor:
-
-        executions = []
-        for process in processes:
-            if isinstance(process, list):
-                executions.append(executor.submit(*process))
-            else:
-                executions.append(executor.submit(process))
-        # to return exceptions
-        return [
-            exe.result()
-            for exe in as_completed(executions)
-        ]
 
 
 class ShapeIdError(Exception):
@@ -304,7 +265,7 @@ class GtfsFormater(GeoLib):
                 [self.compute_line, line, stops_on_day, date]
                 for line in lines_on_day.to_dict('records')
             ]
-            data_completed = run_process(processes)
+            data_completed = method_processing_modes(processes, mode="processing")
         else:
             data_completed = [
                 self.compute_line(line, stops_on_day, date)
@@ -385,16 +346,12 @@ class GtfsFormater(GeoLib):
 
             trips_to_proceed = set(line_stops["trip_id"].to_list())
 
-            trip_stops_computed = [
-                self.compute_trip(date, line, line_stops, trip_id)
+            processes = [
+                [self.compute_trip, date, line, line_stops, trip_id]
                 for trip_id in trips_to_proceed
             ]
 
-            # processes = [
-            #     [self.compute_trip, date, line, line_stops, trip_id]
-            #     for trip_id in trips_to_proceed
-            # ]
-            # trip_stops_computed = run_thread(processes)
+            trip_stops_computed = method_processing_modes(processes, mode=None)
 
         except ShapeIdError:
             return []
