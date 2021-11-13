@@ -78,10 +78,13 @@ python db_run.py
 You'll get 3 parquet files:
 
 * [study_area_name]_moving_stops.parq:
+
 Contains all the stops interpolated
 
 * [study_area_name]_base_stops_data.parq
+
 On going.... [TODO]
 
 * [study_area_name]_base_lines_data.parq
+
 On going.... [TODO]
