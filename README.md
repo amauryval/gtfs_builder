@@ -29,7 +29,7 @@ conda activate gtfs_builder
 Each block are used to compute all the moving stops from the specified GTFS:
 
 1. set the name of your gtfs without space ("study_area_name")
-2. Copy paste your data into the 'input_data' directory ("input_data_dir")
+2. Copy paste your data into the 'input_data' (for example) directory ("input_data_dir")
 3. Select the transport modes to compute in a list ("transport_modes")
 4. Select the date filter mode: based on "calendar_dates.txt" or "calendar.text" ("date_mode")
 5. Define the date to compute ("date")
