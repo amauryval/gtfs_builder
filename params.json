@@ -1,22 +1,22 @@
-{
-  "ter": {
+[
+  {
     "study_area_name": "ter",
     "input_data_dir": "export-ter-gtfs-last",
     "transport_modes": ["train"],
     "date_mode": "calendar_dates",
     "date": "20211125",
     "build_shape_id": true,
-    "interpolation_threshold": 2000,
+    "interpolation_threshold": 3500,
     "multiprocess": false
   },
-  "toulouse": {
+  {
     "study_area_name": "toulouse",
     "input_data_dir": "input_data",
     "transport_modes": ["tramway", "metro"],
     "date_mode": "calendar",
     "date": "20191115",
     "build_shape_id": false,
-    "interpolation_threshold": 800,
+    "interpolation_threshold": 1000,
     "multiprocess": true
   }
-}
+]

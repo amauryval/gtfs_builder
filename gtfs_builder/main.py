@@ -106,7 +106,7 @@ class GtfsFormater(GeoLib):
         self.run()
 
     def run(self):
-
+        self.logger.info(f"Computing {self._study_area_name} GTFS...")
         self._prepare_inputs()
         self._build_stops_data()
         self._build_path()
