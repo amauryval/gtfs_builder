@@ -41,4 +41,4 @@ class Routes(OpenGtfs):
         transport_modes_to_use = dict(filter(lambda x: x[-1] in transport_modes, self._ROUTE_TYPE_MAPPING.items()))
         self._input_data = self._input_data.loc[self._input_data[self.__TRANSPORT_MODE_COLUMN].isin(transport_modes_to_use.keys())]
         if self.is_df_empty(self._input_data):
-            raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({self.__TRANSPORT_MODE_COLUMN}: Use one of {', '.join(self._available_transport_modes)}")
+            raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({self.__TRANSPORT_MODE_COLUMN}: Use one of : {', '.join(self._available_transport_modes)}")
