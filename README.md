@@ -22,7 +22,7 @@ then activate the conda env
 conda activate gtfs_builder
 ```
 
-## configure parameters files
+## Configure parameters files
 
 ### params.json
 
