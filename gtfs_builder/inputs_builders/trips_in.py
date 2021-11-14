@@ -18,6 +18,9 @@ class Trips(OpenGtfs):
             raise ValueError(f"'{input_file}' is empty")
 
     def __clean_direction_id(self):
+        if self._DIRECTION_FIELD_NAME not in self._input_data.columns.to_list():
+            self._input_data.loc[:, self._DIRECTION_FIELD_NAME] = 3
+
         # None value are set to 3
         self._input_data[self._DIRECTION_FIELD_NAME] = [
             "3" if row not in self._DIRECTON_MAPPING.keys() else row
