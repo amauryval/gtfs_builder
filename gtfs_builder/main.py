@@ -455,8 +455,8 @@ class GtfsFormater(GeoLib):
         # no need the first and the last to avoid duplicates
         interpolation_value = int(
             self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
-        if interpolation_value == 0:
-            interpolation_value = 1
+        # if interpolation_value == 0:
+        #     interpolation_value = 1
 
         interpolated_points = tuple(
             line_stop_geom.interpolate(value, normalized=True)
