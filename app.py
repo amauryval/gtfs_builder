@@ -12,17 +12,7 @@ load_dotenv(".gtfs_builder.env")
 
 data = {
     study_area: {
-        "data": io.read_parquet(
-            f"{study_area}_moving_stops.parq",
-            columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]
-        ).astype({
-            "start_date": "uint32",
-            "end_date": "uint32",
-            "x": "float16",
-            "y": "float16",
-            "route_type": "category",
-            "route_long_name": "category",
-        }),
+        "data": io.read_parquet(f"{study_area}_moving_stops.parq", columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]),
         "study_area": study_area
     }
     for study_area in os.environ["AREAS"].split(",")
