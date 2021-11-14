@@ -31,7 +31,6 @@ class GtfsMain:
         filtered_data = self._data.loc[(self._data["start_date"] <= current_date) & (self._data["end_date"] >= current_date)]
         bounds = list(bounds)
         filtered_data = filtered_data.cx[bounds[0]:bounds[2], bounds[1]:bounds[3]]
-        # filtered_data["coords"] = [[row.x, row.y] for row in filtered_data["geometry"]]
         filtered_data = filtered_data[["x", "y", "route_long_name", "route_type"]]
 
         return {

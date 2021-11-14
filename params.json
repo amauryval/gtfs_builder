@@ -1,5 +1,15 @@
 [
   {
+    "study_area_name": "lyon",
+    "input_data_dir": "GTFS_TCL",
+    "transport_modes": ["metro", "tramway"],
+    "date_mode": "calendar_dates",
+    "date": "20211220",
+    "build_shape_id": true,
+    "interpolation_threshold": 300,
+    "multiprocess": true
+  },
+  {
     "study_area_name": "ter",
     "input_data_dir": "export-ter-gtfs-last",
     "transport_modes": ["train"],
