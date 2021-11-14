@@ -245,7 +245,7 @@ class GtfsFormater(GeoLib):
             self.logger.info(f">>> WORKING DAY - {service['date']} - {lines_on_day.shape[0]} line(s) for this day found")
             date = datetime.datetime.strptime(service["date"], '%Y%m%d')
             self.compute_moving_geom(stops_on_day, lines_on_day, date)
-            # self.compute_fixed_geom(stops_on_day, lines_on_day)
+            self.compute_fixed_geom(stops_on_day, lines_on_day)
 
             return
 
