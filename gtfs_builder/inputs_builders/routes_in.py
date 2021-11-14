@@ -18,6 +18,8 @@ class Routes(OpenGtfs):
         "7": "funicular"
     }
 
+    __COLUMNS_TO_ADD = ["route_text_color"]
+
     def __init__(self, geo_tools_core, transport_modes: Optional[List[str]] = None, input_file="routes.txt"):
 
         super(Routes, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file)
@@ -26,6 +28,8 @@ class Routes(OpenGtfs):
 
         if transport_modes is not None:
             self.__filter_by_route_types(transport_modes)
+
+        self.__check_columns()
 
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{input_file}' is empty")
@@ -42,3 +46,9 @@ class Routes(OpenGtfs):
         self._input_data = self._input_data.loc[self._input_data[self.__TRANSPORT_MODE_COLUMN].isin(transport_modes_to_use.keys())]
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({self.__TRANSPORT_MODE_COLUMN}: Use one of : {', '.join(self._available_transport_modes)}")
+
+    def __check_columns(self):
+        existing_columns = self._input_data.columns.to_list()
+        for col in self.__COLUMNS_TO_ADD:
+            if col not in existing_columns:
+                self._input_data.loc[:, col] = ""
