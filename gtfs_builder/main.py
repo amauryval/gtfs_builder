@@ -242,10 +242,10 @@ class GtfsFormater(GeoLib):
             stops_on_day = self._stops_data_build.loc[self._stops_data_build["service_id"].isin(service["service_id"])].copy()
             lines_on_day = self._shapes_data.loc[self._shapes_data["shape_id"].isin(stops_on_day["shape_id"].to_list())].copy()
 
-            self.logger.info(f">>> WORKING DAY - {service['date']} - {lines_on_day.shape[0]} line(s) day found")
+            self.logger.info(f">>> WORKING DAY - {service['date']} - {lines_on_day.shape[0]} line(s) for this day found")
             date = datetime.datetime.strptime(service["date"], '%Y%m%d')
             self.compute_moving_geom(stops_on_day, lines_on_day, date)
-            self.compute_fixed_geom(stops_on_day, lines_on_day)
+            # self.compute_fixed_geom(stops_on_day, lines_on_day)
 
             return
 
@@ -288,16 +288,16 @@ class GtfsFormater(GeoLib):
         data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
         data_sp = data_sp.astype({
-            "start_date": "uint32",
-            "end_date": "uint32",
-            "x": "float32",
-            "y": "float32",
+            "start_date": "float",
+            "end_date": "float",
+            "x": "float",
+            "y": "float",
             "stop_name": "category",
             "stop_code": "category",
-            "route_type": "uint8",
+            "route_type": "category",
             "route_long_name": "category",
             "route_short_name": "category",
-            "direction_id": "uint8",
+            "direction_id": "category",
         })
 
         data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
@@ -370,13 +370,12 @@ class GtfsFormater(GeoLib):
 
         stops_line = stops_on_day.loc[stops_on_day["shape_id"] == input_line_id].copy()
 
-        line_caracteristics = np.unique(stops_line[["route_type", "route_short_name"]].values)
-        # TODO remove this exception
-        if len(line_caracteristics) > 2:
-            raise ShapeIdError(
-                f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
-        caract_1, caract_2 = line_caracteristics
-        self.logger.info(f"> Working line {input_line_id} ({caract_1}: {caract_2})")
+        line_caracteristics = np.unique(stops_line[["route_type", "route_short_name", "route_long_name"]].values)
+        # TODO remove this exception, simplification can be done...
+        # if len(line_caracteristics) > 2:
+        #     raise ShapeIdError(
+        #         f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
+        self.logger.info(f"> Working line {input_line_id} ({', '.join(line_caracteristics)})")
         stops_line.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
         return stops_line
