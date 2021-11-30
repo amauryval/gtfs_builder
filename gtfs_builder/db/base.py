@@ -11,7 +11,6 @@ import datetime
 
 from collections import namedtuple
 
-Base = declarative_base()
 
 # misc
 re_table_name = '([A-Z])'
@@ -22,26 +21,12 @@ Pg_table = namedtuple('pg_table', ['schema', 'name', "rows_count"])
 class Base:
     _session = None
 
+
     @declared_attr
     def __tablename__(cls):
         words = re.sub(re_table_name, ' \g<1>', cls.__name__).strip()
         return words.replace(' ', '_').lower()
 
-    uuid = Column(Integer, primary_key=True)
-
-    @classmethod
-    def schemas(cls):
-        """
-        :rtype: Query
-        """
-        return cls.metadata._schemas
-
-    @classmethod
-    def tables(cls):
-        """
-        :rtype: Query
-        """
-        return (table.fullname for table in cls.metadata.sorted_tables)
 
 
 class BaseMixin:

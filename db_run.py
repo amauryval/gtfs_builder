@@ -1,3 +1,5 @@
+import os
+
 from gtfs_builder.main import GtfsFormater
 from gtfs_builder.push_db import PushDb
 

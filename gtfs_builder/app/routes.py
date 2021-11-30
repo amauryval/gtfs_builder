@@ -7,6 +7,21 @@ from gtfs_builder.app.core import GtfsMain
 
 import psycopg2
 import re
+import sqlite3
+
+from sqlalchemy import create_engine
+from sqlalchemy import MetaData
+from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy.event import listen
+from sqlalchemy.orm import scoped_session
+
+
+def load_spatialite(dbapi_conn, connection_record):
+    dbapi_conn.enable_load_extension(True)
+    dbapi_conn.load_extension("mod_spatialite")
+    dbapi_conn.enable_load_extension(False)
+
 
 def str_to_dict_from_regex(string_value, regex):
     pattern = re.compile(regex)
@@ -23,13 +38,22 @@ def gtfs_routes():
         url_prefix=f"/api/v1/gtfs_builder/"
     )
 
-    _credentials = {
-        **str_to_dict_from_regex(
-            os.environ.get("ADMIN_DB_URL"),
-            ".+:\/\/(?P<user>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
-        ),
-    }
-    conn = psycopg2.connect(**_credentials)
+    _credentials = os.environ.get("ADMIN_DB_URL")
+    os.environ['PATH'] = os.environ['SPATALITE_PATH'] + ';' + os.environ['PATH']
+
+    # _engine = create_engine(
+    #     f"sqlite:///{_credentials}?check_same_thread=False",
+    #     # pool_size=50,     # default in SQLAlchemy
+    #     # max_overflow=50, # default in SQLAlchemy
+    #     # pool_timeout=1,  # raise an error faster than default
+    # )
+    from sqlalchemy.pool import StaticPool
+    _engine = create_engine(f"sqlite:///{_credentials}",connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    listen(_engine, 'connect', load_spatialite)
+    conn = sessionmaker(bind=_engine)()
+    # conn = scoped_session(session_factory)()
+
+    # conn = sqlite3.connect(f"{_credentials}")
 
     @gtfs_routes.get("<area>/existing_study_areas")
     def existing_study_areas(area):

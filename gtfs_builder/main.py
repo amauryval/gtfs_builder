@@ -110,7 +110,7 @@ class GtfsFormater(GeoLib):
         "stop_code",
         "pos",
         "geometry",
-        "geometry_wkb",
+        "geometry_wkt",
         "stop_name",
         "study_area_name",
         "route_type",
@@ -315,7 +315,7 @@ class GtfsFormater(GeoLib):
         self.logger.info(f"{len(data_completed)}")
         data_completed = list(filter(lambda x: not isinstance(x, list), data_completed))
         data_completed = pd.concat(data_completed)
-        data_completed["geometry_wkb"] = [geom.wkb_hex for geom in data_completed["geometry"]]
+        data_completed["geometry_wkt"] = [geom.wkt for geom in data_completed["geometry"]]
 
         data_sp = GeoDataFrame(data_completed)
         data_sp.loc[:, "study_area_name"] = self._study_area_name

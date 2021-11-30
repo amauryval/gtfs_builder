@@ -3,6 +3,10 @@ import psycopg2.extras
 
 import itertools
 
+from gtfs_builder.db.stops_times_ter import StopsTimesTer
+from geoalchemy2 import func
+from sqlalchemy import and_
+
 
 def sql_query_to_list(query):
     return [
@@ -14,7 +18,7 @@ def sql_query_to_list(query):
     ]
 
 def querying(connection, query):
-    cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor = connection.cursor()
     cursor.execute(query)
     result = [dict(row) for row in cursor.fetchall()]
 
@@ -34,48 +38,55 @@ class GtfsMain:
     def nodes_by_date_from_db(self, current_date, bounds):
 
         bounds = list(bounds)
-        nodes_query = f"""
-        SELECT 
-            ST_X(geometry) as x,
-            ST_Y(geometry) as y, 
-            stop_name,
-            route_type        
-        FROM 
-            gtfs_data.stops_times_{self._area}
-        WHERE
-            start_date <= '{current_date}' AND end_date >= '{current_date}'
-        """
-        # print(nodes_query)
-        nodes_res = querying(self._connection, nodes_query)
+        query = self._connection.query(
+            func.ST_X(StopsTimesTer.geom).label("x"),
+            func.ST_Y(StopsTimesTer.geom).label("y"),
+            StopsTimesTer.stop_name.label("stop_name"),
+            StopsTimesTer.route_type.label("route_type"),
+        ).filter(
+            and_(
+                StopsTimesTer.start_date <= current_date,
+                StopsTimesTer.end_date >= current_date,
+            )
+        )
+        assert True
 
         return {
-            "data_geojson": nodes_res
+            "data_geojson": sql_query_to_list(query)
         }
+
+
+        # nodes_query = f"""
+        # SELECT
+        #     X(geom) as x,
+        #     Y(geom) as y,
+        #     stop_name,
+        #     route_type
+        # FROM
+        #     stops_times_{self._area}
+        # WHERE
+        #     start_date <= '{current_date}' AND end_date >= '{current_date}'
+        # """
+        # # print(nodes_query)
+        # nodes_res = querying(self._connection, nodes_query)
+        #
+        # return {
+        #     "data_geojson": nodes_res
+        # }
 
 
     def context_data_from_db(self):
 
-        bounds_query = f"""
-        SELECT 
-            ST_EXTENT(geometry) as extent
-        FROM 
-            gtfs_data.stops_times_{self._area}
-        WHERE
-            pos = 0
-        """
-        bounds_res = querying(self._connection, bounds_query)
 
-        date_bounds_query = f"""
-        SELECT 
-            min(start_date) as start_date,
-            max(end_date) as end_date
-        FROM 
-            gtfs_data.stops_times_{self._area}
-        """
-        date_bounds_res = querying(self._connection, date_bounds_query)
-
+        # query_range_date = self._connection.query(
+        #     min(StopsTimesTer.start_date).label("start_date"),
+        #     max(StopsTimesTer.end_date).label("end_date"),
+        # )
+        # assert True
+        # date_range = sql_query_to_list(query_range_date)
+        assert True
         return {
-            "data_bounds": list(map(lambda x: float(x), list(itertools.chain(*list(map(lambda x: x.split(" "), bounds_res[0]["extent"].replace("BOX(", "").replace(")", "").split(','))))))),
-            "start_date": date_bounds_res[0]["start_date"].strftime(self.__DATE_FORMAT),
-            "end_date": date_bounds_res[0]["end_date"].strftime(self.__DATE_FORMAT),
+            "data_bounds": [-14.765625, 39.520992, 21.774902, 53.173119],
+            "start_date": "2021-11-25 00:03:00",
+            "end_date": "2021-11-26 01:00:00",
         }
