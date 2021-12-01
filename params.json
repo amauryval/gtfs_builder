@@ -6,7 +6,7 @@
     "date_mode": "calendar_dates",
     "date": "20211220",
     "build_shape_id": true,
-    "interpolation_threshold": 300,
+    "interpolation_threshold": 800,
     "multiprocess": true
   },
   {
@@ -16,7 +16,7 @@
     "date_mode": "calendar_dates",
     "date": "20211125",
     "build_shape_id": true,
-    "interpolation_threshold": 3500,
+    "interpolation_threshold": 6000,
     "multiprocess": false
   },
   {
