@@ -27,12 +27,13 @@ COPY data/toulouse_moving_stops.parq toulouse_moving_stops.parq
 COPY data/lyon_moving_stops.parq lyon_moving_stops.parq
 
 COPY app.py app.py
-# no need to run data processing
-# COPY db_run.py db_run.py
-COPY /gtfs_builder gtfs_builder/
 
 # Copy /venv from the previous stage:
 COPY --from=build /venv /venv
+
+# no need to run data processing
+# COPY db_run.py db_run.py
+COPY /gtfs_builder gtfs_builder/
 
 # no root user
 RUN useradd --no-create-home ava
