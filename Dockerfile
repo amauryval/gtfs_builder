@@ -19,18 +19,16 @@ RUN conda-pack -n gtfs_builder -o /tmp/env.tar && \
 RUN /venv/bin/conda-unpack
 
 
-
 FROM debian:stable-slim AS runtime
+
+# Copy /venv from the previous stage:
+COPY --from=build /venv /venv
 
 COPY data/ter_moving_stops.parq ter_moving_stops.parq
 COPY data/toulouse_moving_stops.parq toulouse_moving_stops.parq
 COPY data/lyon_moving_stops.parq lyon_moving_stops.parq
 
 COPY app.py app.py
-
-# Copy /venv from the previous stage:
-COPY --from=build /venv /venv
-
 # no need to run data processing
 # COPY db_run.py db_run.py
 COPY /gtfs_builder gtfs_builder/
