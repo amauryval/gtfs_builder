@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3:4.7.12 AS build
+FROM continuumio/miniconda3:4.11.0 AS build
 
 WORKDIR /usr/src/
 
