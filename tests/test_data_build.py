@@ -1,11 +1,7 @@
 import os
-
 from gtfs_builder.main import GtfsFormater
 
 import spatialpandas.io as sp_io
-import pandas as pd
-import json
-
 
 def remove_output_file():
     files_to_remove = ["fake_base_lines_data.parq", "fake_base_stops_data.parq", "_fake_moving_stops.parq"]
@@ -27,7 +23,7 @@ def test_data_processing_full_data_thresh_2(credentials):
         interpolation_threshold=500
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (9, 8)
+    assert base_lines.shape == (7, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
     base_stops = sp_io.read_parquet("fake_base_stops_data.parq")
@@ -51,7 +47,7 @@ def test_data_processing_full_data_calendar_dates(credentials):
         interpolation_threshold=500
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (9, 8)
+    assert base_lines.shape == (7, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
     base_stops = sp_io.read_parquet("fake_base_stops_data.parq")
@@ -76,7 +72,7 @@ def test_data_processing_with_shape_id_computed(credentials):
         interpolation_threshold=200
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
-    assert base_lines.shape == (9, 8)
+    assert base_lines.shape == (7, 8)
     assert set(base_lines.columns.tolist()) == set(['shape_id', 'geometry', 'route_desc', 'route_type', 'route_short_name', 'direction_id', 'route_color', 'route_text_color'])
 
     base_stops = sp_io.read_parquet("fake_base_stops_data.parq")

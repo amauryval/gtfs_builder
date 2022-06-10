@@ -28,7 +28,7 @@ def test_nodes_by_date_route_invalid(flask_client):
 
 
 def test_study_area_list(flask_client):
-    response = flask_client.get("fake/existing_study_areas", content_type="html/text")
+    response = flask_client.get("existing_study_areas", content_type="html/text")
     assert response.status_code == 200
 
     output_data = response.json
