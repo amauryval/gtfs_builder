@@ -37,6 +37,8 @@ def pytest_sessionfinish(session):
 
     for input_file in files_to_remove:
         if os.path.isfile(input_file):
+            print(f"File {input_file} removed")
+
             os.remove(input_file)
 
 
