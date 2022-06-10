@@ -50,7 +50,7 @@ jobs:
         run: |
           source ~/miniconda3/etc/profile.d/conda.sh
           conda activate gtfs_builder
-          python -m pytest --cov=gtfs_builder --cov-report=xml tests/
+          python -m pytest --cov=gtfs_builder --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
