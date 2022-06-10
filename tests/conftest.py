@@ -14,7 +14,7 @@ from gtfs_builder.main import GtfsFormater
 def pytest_sessionstart(session):
     credentials = {
         "study_area_name": "fake",
-        "input_data_dir":  os.path.join(os.getcwd(), r"tests/fixture\gtfs"),
+        "input_data_dir":  os.path.join(os.getcwd(), r"tests\fixture\gtfs"),
         "transport_modes": ["bus"],
         "date_mode": "calendar",
         "date": "20070604",
