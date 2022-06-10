@@ -43,9 +43,8 @@ class OpenGtfs:
         self.core = geo_tools_core
         self._path_data = path_data
 
-        config_file_path = json.loads(
-            open(os.path.join(self._path_data, "inputs_attrs.json")).read()
-        )
+        with open(os.path.join(self._path_data, "inputs_attrs.json")) as output:
+            config_file_path = json.loads(output.read())
 
         input_file_base = str(input_file)
         for tag in self._COMPUTED_FILE_TAGS:

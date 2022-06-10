@@ -10,7 +10,7 @@ def test_range_dates_route(flask_client):
 
 
 def test_nodes_by_date_route(flask_client):
-    response = flask_client.get("fake/moving_nodes_by_date?current_date=2007-01-01 09:07:20&bounds=-180,-89,180,89", content_type="html/text")
+    response = flask_client.get("fake/moving_nodes_by_date?current_date=2007-06-04 14:14:41&bounds=-180,-89,180,89", content_type="html/text")
     assert response.status_code == 200
 
     output_data = response.json
@@ -28,7 +28,7 @@ def test_nodes_by_date_route_invalid(flask_client):
 
 
 def test_study_area_list(flask_client):
-    response = flask_client.get("fake/existing_study_areas", content_type="html/text")
+    response = flask_client.get("existing_study_areas", content_type="html/text")
     assert response.status_code == 200
 
     output_data = response.json
