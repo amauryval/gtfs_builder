@@ -11,25 +11,17 @@ import spatialpandas.io as sp_io
 from gtfs_builder.main import GtfsFormater
 
 
-def pytest_sessionstart(session):
-    credentials = {
+
+@pytest.fixture
+def credentials():
+    return {
         "study_area_name": "fake",
-        "input_data_dir":  os.path.join(os.getcwd(), r"tests/fixture/gtfs"),
+        "input_data_dir": "tests/fixture/gtfs",
         "transport_modes": ["bus"],
         "date_mode": "calendar",
         "date": "20070604",
         "interpolation_threshold": 1000
-    }
-
-    GtfsFormater(
-        study_area_name=credentials["study_area_name"],
-        data_path=credentials["input_data_dir"],
-        transport_modes=credentials["transport_modes"],
-        date_mode="calendar_dates",
-        date=credentials["date"],
-        build_shape_data=False,
-        interpolation_threshold=500
-    )
+  }
 
 
 def pytest_sessionfinish(session):
