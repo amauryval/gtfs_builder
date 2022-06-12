@@ -11,7 +11,7 @@
   },
   {
     "study_area_name": "ter",
-    "input_data_dir": "export-ter-gtfs-last",
+    "input_data_dir": "input_data\ter",
     "transport_modes": ["train"],
     "date_mode": "calendar_dates",
     "date": "20211125",
@@ -21,7 +21,7 @@
   },
   {
     "study_area_name": "toulouse",
-    "input_data_dir": "input_data",
+    "input_data_dir": r"input_data\toulouse",
     "transport_modes": ["tramway", "metro"],
     "date_mode": "calendar",
     "date": "20191115",
