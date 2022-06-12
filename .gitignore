@@ -111,3 +111,4 @@ venv.bak/
 
 shapes_computed.txt
 trips_updated.txt
+/input_data/
