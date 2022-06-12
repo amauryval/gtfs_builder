@@ -135,7 +135,7 @@ class MongoDbHelper:
         return list(filter(lambda x: x == name_value, mongo_features_list))
 
 
-session = MongoDbHelper("mongodb://__:__@localhost:27017/")
+session = MongoDbHelper(f"mongodb://{os.environ['USER']}:{os.environ['PSWD']}@localhost:27017/")
 
 # create db
 gtfs_builder_db = session.create_database("gtfs_builder", overwrite=True)
