@@ -13,3 +13,4 @@ dependencies:
   - pymongo=4.1.1
   - spatialpandas=0.4.3
   - python-dotenv=0.15.0
+  - dask-geopandas=0.1.0

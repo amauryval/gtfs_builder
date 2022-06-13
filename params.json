@@ -1,7 +1,7 @@
 [
   {
     "study_area_name": "lyon",
-    "input_data_dir": "GTFS_TCL",
+    "input_data_dir": "input_data/lyon",
     "transport_modes": ["metro", "tramway"],
     "date_mode": "calendar_dates",
     "date": "20211220",
@@ -11,7 +11,7 @@
   },
   {
     "study_area_name": "ter",
-    "input_data_dir": "input_data\ter",
+    "input_data_dir": "input_data/ter",
     "transport_modes": ["train"],
     "date_mode": "calendar_dates",
     "date": "20211125",
@@ -21,7 +21,7 @@
   },
   {
     "study_area_name": "toulouse",
-    "input_data_dir": r"input_data\toulouse",
+    "input_data_dir": "input_data/toulouse",
     "transport_modes": ["tramway", "metro"],
     "date_mode": "calendar",
     "date": "20191115",

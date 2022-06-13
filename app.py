@@ -13,7 +13,7 @@ load_dotenv(".gtfs_builder.env")
 
 def get_data(study_area):
     return GeoDataFrame(io.read_parquet(
-            f"{study_area}_moving_stops.parq",
+            os.path.join(os.getcwd(), "data", f"{study_area}_moving_stops.parq"),
             columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]).astype({
             "start_date": "uint32",
             "end_date": "uint32",

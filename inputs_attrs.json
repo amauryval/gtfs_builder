@@ -1,7 +1,7 @@
 {
     "output_epsg": 4326,
     "shapes.txt": {
-        "shape_id": "string",
+        "shape_id": "category",
         "shape_pt_lat": "float",
         "shape_pt_lon": "float",
         "shape_pt_sequence": "int"
@@ -24,10 +24,10 @@
         "shape_id": "str"
     },
     "stop_times.txt": {
-        "trip_id": "string",
+        "trip_id": "category",
         "arrival_time": "string",
         "departure_time": "string",
-        "stop_id": "string",
+        "stop_id": "category",
         "stop_sequence": "int",
         "pickup_type": "string",
         "drop_off_type": "string"

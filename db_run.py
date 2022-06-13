@@ -19,6 +19,7 @@ def build_data(input_params_file_path: str) -> None:
             interpolation_threshold=input_data["interpolation_threshold"],
             multiprocess=input_data["multiprocess"],
         )
+        assert False
 
 
 if __name__ == '__main__':
