@@ -1,7 +1,7 @@
 import os
 from gtfs_builder.main import GtfsFormater
 
-import spatialpandas.io as sp_io
+import datetime
 
 from gtfs_builder.db.moving_points import MovingPoints
 
@@ -22,9 +22,9 @@ def test_data_processing_full_data_thresh_overwrite_table(credentials, session_d
     assert MovingPoints.schemas() == {"gtfs_data"}
     assert MovingPoints.infos().rows_count == 436
 
-    import datetime
     date = datetime.datetime.strptime('01/01/2007 08:02:40', '%d/%m/%Y %H:%M:%S')
-    MovingPoints.filter_by_date_area(date, "fake")
+    query = MovingPoints.filter_by_date_area(date, "fake")
+    assert query.count() == 1
 
 
 def test_data_processing_full_data_calendar_dates(credentials, session_db):
@@ -43,6 +43,11 @@ def test_data_processing_full_data_calendar_dates(credentials, session_db):
     assert MovingPoints.schemas() == {"gtfs_data"}
     assert MovingPoints.infos().rows_count == 436
 
+    date = datetime.datetime.strptime('04/06/2007 08:00:20', '%d/%m/%Y %H:%M:%S')
+    query = MovingPoints.filter_by_date_area(date, "fake")
+    assert query.count() == 1
+
+
 def test_data_processing_with_shape_id_computed(credentials, session_db):
     GtfsFormater(
         study_area_name=credentials["study_area_name"],
@@ -58,6 +63,10 @@ def test_data_processing_with_shape_id_computed(credentials, session_db):
     MovingPoints.set_session(session_db)
     assert MovingPoints.schemas() == {"gtfs_data"}
     assert MovingPoints.infos().rows_count == 764
+
+    date = datetime.datetime.strptime('01/01/2007 08:02:40', '%d/%m/%Y %H:%M:%S')
+    query = MovingPoints.filter_by_date_area(date, "fake")
+    assert query.count() == 1
 
 
 def test_data_processing_full_data_tresh_1(credentials, session_db):
@@ -76,3 +85,7 @@ def test_data_processing_full_data_tresh_1(credentials, session_db):
     MovingPoints.set_session(session_db)
     assert MovingPoints.schemas() == {"gtfs_data"}
     assert MovingPoints.infos().rows_count == 300
+
+    date = datetime.datetime.strptime('01/01/2007 08:01:40', '%d/%m/%Y %H:%M:%S')
+    query = MovingPoints.filter_by_date_area(date, "fake")
+    assert query.count() == 2
