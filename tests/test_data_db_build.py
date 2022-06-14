@@ -25,6 +25,7 @@ def test_data_processing_full_data_thresh_overwrite_table(credentials, session_d
     date = datetime.datetime.strptime('01/01/2007 08:02:40', '%d/%m/%Y %H:%M:%S')
     query = MovingPoints.filter_by_date_area(date, "fake")
     assert query.count() == 1
+    assert MovingPoints.get_bounds_by_area("fake") == (-122.482, 36.425, -116.752, 37.659)
 
 
 def test_data_processing_full_data_calendar_dates(credentials, session_db):
@@ -46,6 +47,8 @@ def test_data_processing_full_data_calendar_dates(credentials, session_db):
     date = datetime.datetime.strptime('04/06/2007 08:00:20', '%d/%m/%Y %H:%M:%S')
     query = MovingPoints.filter_by_date_area(date, "fake")
     assert query.count() == 1
+    assert MovingPoints.get_bounds_by_area("fake") == (-122.482, 36.425, -116.752, 37.659)
+
 
 
 def test_data_processing_with_shape_id_computed(credentials, session_db):
@@ -67,6 +70,8 @@ def test_data_processing_with_shape_id_computed(credentials, session_db):
     date = datetime.datetime.strptime('01/01/2007 08:02:40', '%d/%m/%Y %H:%M:%S')
     query = MovingPoints.filter_by_date_area(date, "fake")
     assert query.count() == 1
+    assert MovingPoints.get_bounds_by_area("fake") == (-117.133, 36.425, -116.752, 36.916)
+
 
 
 def test_data_processing_full_data_tresh_1(credentials, session_db):
@@ -89,3 +94,5 @@ def test_data_processing_full_data_tresh_1(credentials, session_db):
     date = datetime.datetime.strptime('01/01/2007 08:01:40', '%d/%m/%Y %H:%M:%S')
     query = MovingPoints.filter_by_date_area(date, "fake")
     assert query.count() == 2
+    assert MovingPoints.get_bounds_by_area("fake") == (-122.482, 36.425, -116.401, 37.659)
+
