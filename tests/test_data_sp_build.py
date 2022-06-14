@@ -20,7 +20,8 @@ def test_data_processing_full_data_thresh_2(credentials):
         date_mode=credentials["date_mode"],
         date=credentials["date"],
         build_shape_data=False,
-        interpolation_threshold=500
+        interpolation_threshold=500,
+        output_format="file"
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (7, 8)
@@ -44,7 +45,8 @@ def test_data_processing_full_data_calendar_dates(credentials):
         date_mode="calendar_dates",
         date=credentials["date"],
         build_shape_data=False,
-        interpolation_threshold=500
+        interpolation_threshold=500,
+        output_format="file"
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (7, 8)
@@ -69,7 +71,8 @@ def test_data_processing_with_shape_id_computed(credentials):
         date_mode=credentials["date_mode"],
         date=credentials["date"],
         build_shape_data=True,
-        interpolation_threshold=200
+        interpolation_threshold=200,
+        output_format="file"
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (7, 8)
@@ -94,7 +97,8 @@ def test_data_processing_full_data_tresh_1(credentials):
         date_mode=credentials["date_mode"],
         date="20070603",
         build_shape_data=False,
-        interpolation_threshold=1000
+        interpolation_threshold=1000,
+        output_format="file"
     )
     base_lines = sp_io.read_parquet("fake_base_lines_data.parq")
     assert base_lines.shape == (9, 8)

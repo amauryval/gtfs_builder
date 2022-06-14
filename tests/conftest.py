@@ -8,8 +8,24 @@ import os
 
 import spatialpandas.io as sp_io
 
-from gtfs_builder.main import GtfsFormater
+from gtfs_builder.main import str_to_dict_from_regex
+from gtfs_builder.db.base import Base
 
+from dotenv import load_dotenv
+from geolib import GeoLib
+
+
+def get_db_session():
+    credentials = {
+        **str_to_dict_from_regex(
+            os.environ.get("ADMIN_DB_URL"),
+            ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
+        ),
+        **{"scoped_session": True}
+    }
+
+    session, _ = GeoLib().sqlalchemy_connection(**credentials)
+    return session
 
 
 @pytest.fixture
@@ -24,14 +40,26 @@ def credentials():
   }
 
 
-def pytest_sessionfinish(session):
-    files_to_remove = ["fake_base_lines_data.parq", "fake_base_stops_data.parq", "fake_moving_stops.parq"]
+@pytest.fixture
+def session_db():
+    load_dotenv()
+    return get_db_session()
 
+
+def pytest_sessionfinish(session):
+    # remove file
+    files_to_remove = ["fake_base_lines_data.parq", "fake_base_stops_data.parq", "fake_moving_stops.parq"]
     for input_file in files_to_remove:
         if os.path.isfile(input_file):
             print(f"File {input_file} removed")
 
             os.remove(input_file)
+
+    db_session = get_db_session()
+
+    # clean db
+    Base.metadata.drop_all(db_session.bind)
+
 
 
 @pytest.fixture(scope="module")

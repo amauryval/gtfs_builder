@@ -2,6 +2,10 @@ from typing import List
 from typing import Dict
 from typing import Optional
 
+from gtfs_builder.db.base import Base
+from gtfs_builder.db.moving_points import MovingPoints
+import re
+
 import os
 import datetime
 import copy
@@ -44,8 +48,17 @@ class ShapeIdError(Exception):
     pass
 
 
+def str_to_dict_from_regex(string_value, regex):
+    pattern = re.compile(regex)
+    extraction = pattern.match(string_value)
+    return extraction.groupdict()
+
+
 class GtfsFormater(GeoLib):
     pd.options.mode.chained_assignment = None
+
+    __MAIN_DB_SCHEMA = "gtfs_data"
+    __PG_EXTENSIONS = ["btree_gist", "postgis"]
 
     __COORDS_PRECISION = 3
 
@@ -91,9 +104,14 @@ class GtfsFormater(GeoLib):
         date: str = None,
         build_shape_data: bool = False,
         interpolation_threshold: int = 1000,
-        multiprocess: bool = False
+        multiprocess: bool = False,
+        output_format: str = "file",
+        db_mode: str = "append"
     ):
         super().__init__()
+
+        self._output_format = output_format
+        self._db_mode = db_mode
 
         self._study_area_name = study_area_name
         self.path_data = data_path
@@ -107,9 +125,47 @@ class GtfsFormater(GeoLib):
 
     def run(self):
         self.logger.info(f"Computing {self._study_area_name} GTFS...")
+        if self._output_format == "db":
+            assert self._db_mode in {"append", "overwrite"}
+            self._prepare_db()
         self._prepare_inputs()
         self._build_stops_data()
         self._build_path()
+
+    def _prepare_db(self):
+        self.logger.info('Prepare database')
+
+        self._credentials = {
+            **str_to_dict_from_regex(
+                os.environ["ADMIN_DB_URL"],
+                ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
+            ),
+        }
+
+        db_sessions = self.init_db(
+            **self._credentials,
+            extensions=self.__PG_EXTENSIONS,
+            overwrite=False
+        )
+        self._engine = db_sessions["engine"]
+        schemas = Base.metadata._schemas
+        for schema in schemas:
+            self.init_schema(self._engine, schema)
+        if self._db_mode == "overwrite":  # drop tables
+            Base.metadata.drop_all(self._engine)
+            Base.metadata.create_all(self._engine)
+
+        tables = [table.fullname for table in Base.metadata.sorted_tables]
+        if len(tables) > 0:
+            tables_str = ', '.join(tables)
+            self.logger.info(f'({len(tables)}) tables  found: {tables_str}')
+        else:
+            raise ValueError("Not tables found on DB!")
+
+    def _get_db_session(self):
+        session, engine = self.sqlalchemy_connection(**self._credentials)
+        return session, engine
+
 
     def _prepare_inputs(self):
         self._stop_times_data = StopsTimes(self).data
@@ -271,38 +327,45 @@ class GtfsFormater(GeoLib):
         data_completed = list(filter(lambda x: not isinstance(x, list), data_completed))
         data_completed = pd.concat(data_completed)
 
-        data_sp = GeoDataFrame(data_completed, geometry="geometry")
-        data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
+        if self._output_format == "db":
+            data_completed["study_area"] = self._study_area_name
+            input_data = self.gdf_design_checker(self._engine, self.__MAIN_DB_SCHEMA, MovingPoints.__table__.name, data_completed, epsg=4326)
+            dict_data = self.df_to_dicts_list(input_data, 4326)
+            self.dict_list_to_db(self._engine, dict_data, self.__MAIN_DB_SCHEMA, MovingPoints.__table__.name)
 
-        data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
-        data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
+        else:
+            data_sp = GeoDataFrame(data_completed, geometry="geometry")
+            data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
 
-        data_sp = data_sp.astype({
-            "start_date": "float",
-            "end_date": "float",
-            "x": "float",
-            "y": "float",
-            "stop_name": "category",
-            "stop_code": "category",
-            "route_type": "category",
-            "route_long_name": "category",
-            "route_short_name": "category",
-            "direction_id": "category",
-        })
+            data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
+            data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
-        data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
+            data_sp = data_sp.astype({
+                "start_date": "float",
+                "end_date": "float",
+                "x": "float",
+                "y": "float",
+                "stop_name": "category",
+                "stop_code": "category",
+                "route_type": "category",
+                "route_long_name": "category",
+                "route_short_name": "category",
+                "direction_id": "category",
+            })
+
+            data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
 
     def compute_fixed_geom(self, stops_data, lines_data):
         stops_data_copy = stops_data.copy(deep=True)
         stops = stops_data_copy.groupby(["stop_code"], sort=False).agg({
             "stop_code": "first",
             "geometry": "first",
-            "stop_name": lambda x: list(set(list(x))),
-            "route_short_name": lambda x: list(set(list(x))),
-            "route_desc": lambda x: list(set(list(x))),
-            "route_type": lambda x: list(set(list(x))),
-            "route_color": lambda x: list(set(list(x))),
-            "route_text_color": lambda x: list(set(list(x))),
+            "stop_name": lambda x: set(list(x)),
+            "route_short_name": lambda x: set(list(x)),
+            "route_desc": lambda x: set(list(x)),
+            "route_type": lambda x: set(list(x)),
+            "route_color": lambda x: set(list(x)),
+            "route_text_color": lambda x: set(list(x)),
         }).dropna()
         stops_data = gpd.GeoDataFrame(stops)
         data_sp = GeoDataFrame(stops_data)
@@ -316,12 +379,12 @@ class GtfsFormater(GeoLib):
         ).groupby(["shape_id"]).agg({
             "shape_id": "first",
             "geometry": "first",
-            "route_desc": lambda x: list(set(list(x))),
-            "route_type": lambda x: list(set(list(x))),
-            "route_short_name": lambda x: list(set(list(x))),
-            "direction_id": lambda x: list(set(list(x))),
-            "route_color": lambda x: list(set(list(x))),
-            "route_text_color": lambda x: list(set(list(x))),
+            "route_desc": lambda x: set(list(x)),
+            "route_type": lambda x: set(list(x)),
+            "route_short_name": lambda x: set(list(x)),
+            "direction_id": lambda x: set(list(x)),
+            "route_color": lambda x: set(list(x)),
+            "route_text_color": lambda x: set(list(x)),
         })
         lines_data = gpd.GeoDataFrame(lines)
         data_sp = GeoDataFrame(lines_data)
@@ -357,14 +420,13 @@ class GtfsFormater(GeoLib):
 
     def _get_stops_line(self, input_line_id, stops_on_day):
 
-        stops_line = stops_on_day.loc[stops_on_day["shape_id"] == input_line_id].copy()
+        stops_line = stops_on_day.loc[stops_on_day["shape_id"] == input_line_id]
 
-        line_caracteristics = np.unique(stops_line[["route_type", "route_short_name", "route_long_name"]].values)
+        line_caracteristics = stops_line[["route_type", "route_short_name", "route_long_name"]].values.ravel()
         # TODO remove this exception, simplification can be done...
         self.logger.info(f"> Working line {input_line_id} ({', '.join(line_caracteristics)})")
-        stops_line.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
-        return stops_line
+        return stops_line.sort_values(by=["trip_id", "stop_sequence"])
 
     @staticmethod
     def compute_wg84_line_length(input_geom):
@@ -396,7 +458,7 @@ class GtfsFormater(GeoLib):
         trip_stops["pos"] = np.arange(len(trip_stops))
 
         trip_stops_elements = trip_stops.to_dict('records')
-        stop_pairs = list(zip(trip_stops_elements, trip_stops_elements[1:]))
+        stop_pairs = zip(trip_stops_elements, trip_stops_elements[1:])
 
         # compute new nodes
         for pair in stop_pairs:
@@ -405,12 +467,19 @@ class GtfsFormater(GeoLib):
         trip_data = gpd.GeoDataFrame(trip_stops_elements).sort_values("pos")
         trip_data["x"] = trip_data.geometry.x
         trip_data["y"] = trip_data.geometry.y
-
+        trip_data["validity_range"] = [self._format_validity_range(*row) for row in zip(trip_data["start_date"], trip_data["end_date"])]
         return trip_data
 
+    @staticmethod
+    def _format_validity_range(start_date: datetime = None, end_date: datetime = None) -> DateTimeRange:
+        if start_date is None:
+            start_date = datetime.min
+        if end_date is None:
+            end_date = datetime.max
+        return DateTimeRange(start_date, end_date)
+
     def _compute_new_nodes(self, pair, line_geom_remaining):
-        first_stop = pair[0]
-        next_stop = pair[-1]
+        first_stop, next_stop = pair
 
         start_date = first_stop["end_date"]
         end_date = next_stop["start_date"]
@@ -438,7 +507,7 @@ class GtfsFormater(GeoLib):
 
             data = [
                 self._compute_node(first_stop, enum, point, dates)
-                for enum, (point, dates) in enumerate(list(zip(interpolated_points, interpolated_datetime_pairs)))
+                for enum, (point, dates) in enumerate(zip(interpolated_points, interpolated_datetime_pairs))
             ]
 
             self._CACHE_DATA[f"{first_stop['stop_id']}_{next_stop['stop_id']}"] = [feature["geometry"] for feature in data]
@@ -448,10 +517,10 @@ class GtfsFormater(GeoLib):
             interpolate_points_cache = self._CACHE_DATA[f"{first_stop['stop_id']}_{next_stop['stop_id']}"]
 
             interpolated_datetime = pd.date_range(start_date, end_date, periods=len(interpolate_points_cache) + 1).to_list()
-            interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
+            interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
             data = [
                 self._compute_node(first_stop, enum, point, dates)
-                for enum, (point, dates) in enumerate(list(zip(interpolate_points_cache, interpolated_datetime_pairs)))
+                for enum, (point, dates) in enumerate(zip(interpolate_points_cache, interpolated_datetime_pairs))
             ]
 
 
