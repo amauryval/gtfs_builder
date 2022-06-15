@@ -8,7 +8,7 @@
     "build_shape_id": true,
     "interpolation_threshold": 800,
     "multiprocess": true,
-    "db_credentials": null
+    "db_mode": "overwrite"
   },
   {
     "study_area_name": "ter",
@@ -18,8 +18,7 @@
     "date": "20211125",
     "build_shape_id": true,
     "interpolation_threshold": 6000,
-    "multiprocess": true,
-    "db_credentials": null
+    "multiprocess": false
   },
   {
     "study_area_name": "toulouse",
@@ -29,7 +28,6 @@
     "date": "20191115",
     "build_shape_id": false,
     "interpolation_threshold": 1000,
-    "multiprocess": true,
-    "db_credentials": null
+    "multiprocess": true
   }
 ]

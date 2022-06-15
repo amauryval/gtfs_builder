@@ -9,9 +9,9 @@ class Trips(OpenGtfs):
         "1": "forth"
     }
 
-    def __init__(self, geo_tools_core, input_file="trips.txt"):
+    def __init__(self, core, input_file="trips.txt"):
 
-        super(Trips, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file)
+        super(Trips, self).__init__(core, core.path_data, input_file)
         self.__clean_direction_id()
 
         if self.is_df_empty(self._input_data):
@@ -22,6 +22,7 @@ class Trips(OpenGtfs):
             self._input_data.loc[:, self._DIRECTION_FIELD_NAME] = 3
 
         # None value are set to 3
+        assert True
         self._input_data[self._DIRECTION_FIELD_NAME] = [
             "3" if row not in self._DIRECTON_MAPPING.keys() else row
             for row in self._input_data[self._DIRECTION_FIELD_NAME]

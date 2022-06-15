@@ -5,6 +5,8 @@ import datetime
 
 from gtfs_builder.db.moving_points import MovingPoints
 
+from shapely.wkt import loads
+
 
 def test_data_processing_full_data_thresh_overwrite_table(credentials, session_db):
     GtfsFormater(
@@ -23,9 +25,15 @@ def test_data_processing_full_data_thresh_overwrite_table(credentials, session_d
     assert MovingPoints.infos().rows_count == 436
 
     date = datetime.datetime.strptime('01/01/2007 08:02:40', '%d/%m/%Y %H:%M:%S')
-    query = MovingPoints.filter_by_date_area(date, "fake")
+    query = MovingPoints.filter_by_date_area(date, "fake", (-180, -89, 180, 89))
     assert query.count() == 1
-    assert MovingPoints.get_bounds_by_area("fake") == (-122.482, 36.425, -116.752, 37.659)
+
+    query = MovingPoints.get_bounds_by_area("fake")
+    assert query.count() == 1
+    assert len(MovingPoints.get_bounds_by_area("fake").first()) == 3
+    assert loads(MovingPoints.get_bounds_by_area("fake").first()[0]).bounds == (-122.482, 36.425, -116.752, 37.659)
+    assert MovingPoints.get_bounds_by_area("fake").first()[1] == datetime.datetime(2007, 1, 1, 6, 0)
+    assert MovingPoints.get_bounds_by_area("fake").first()[2] == datetime.datetime(2007, 1, 1, 12, 15)
 
 
 def test_data_processing_full_data_calendar_dates(credentials, session_db):
@@ -45,10 +53,15 @@ def test_data_processing_full_data_calendar_dates(credentials, session_db):
     assert MovingPoints.infos().rows_count == 436
 
     date = datetime.datetime.strptime('04/06/2007 08:00:20', '%d/%m/%Y %H:%M:%S')
-    query = MovingPoints.filter_by_date_area(date, "fake")
+    query = MovingPoints.filter_by_date_area(date, "fake", (-180, -89, 180, 89))
     assert query.count() == 1
-    assert MovingPoints.get_bounds_by_area("fake") == (-122.482, 36.425, -116.752, 37.659)
 
+    query = MovingPoints.get_bounds_by_area("fake")
+    assert query.count() == 1
+    assert len(MovingPoints.get_bounds_by_area("fake").first()) == 3
+    assert loads(MovingPoints.get_bounds_by_area("fake").first()[0]).bounds == (-122.482, 36.425, -116.752, 37.659)
+    assert MovingPoints.get_bounds_by_area("fake").first()[1] == datetime.datetime(2007, 6, 4, 6, 0)
+    assert MovingPoints.get_bounds_by_area("fake").first()[2] == datetime.datetime(2007, 6, 4, 12, 15)
 
 
 def test_data_processing_with_shape_id_computed(credentials, session_db):
@@ -68,9 +81,15 @@ def test_data_processing_with_shape_id_computed(credentials, session_db):
     assert MovingPoints.infos().rows_count == 764
 
     date = datetime.datetime.strptime('01/01/2007 08:02:40', '%d/%m/%Y %H:%M:%S')
-    query = MovingPoints.filter_by_date_area(date, "fake")
+    query = MovingPoints.filter_by_date_area(date, "fake", (-180, -89, 180, 89))
     assert query.count() == 1
-    assert MovingPoints.get_bounds_by_area("fake") == (-117.133, 36.425, -116.752, 36.916)
+
+    query = MovingPoints.get_bounds_by_area("fake")
+    assert query.count() == 1
+    assert len(MovingPoints.get_bounds_by_area("fake").first()) == 3
+    assert loads(MovingPoints.get_bounds_by_area("fake").first()[0]).bounds == (-117.133, 36.425, -116.752, 36.916)
+    assert MovingPoints.get_bounds_by_area("fake").first()[1] == datetime.datetime(2007, 1, 1, 6, 0)
+    assert MovingPoints.get_bounds_by_area("fake").first()[2] == datetime.datetime(2007, 1, 1, 12, 15)
 
 
 
@@ -92,7 +111,13 @@ def test_data_processing_full_data_tresh_1(credentials, session_db):
     assert MovingPoints.infos().rows_count == 300
 
     date = datetime.datetime.strptime('01/01/2007 08:01:40', '%d/%m/%Y %H:%M:%S')
-    query = MovingPoints.filter_by_date_area(date, "fake")
+    query = MovingPoints.filter_by_date_area(date, "fake", (-180, -89, 180, 89))
     assert query.count() == 2
-    assert MovingPoints.get_bounds_by_area("fake") == (-122.482, 36.425, -116.401, 37.659)
+
+    query = MovingPoints.get_bounds_by_area("fake")
+    assert query.count() == 1
+    assert len(MovingPoints.get_bounds_by_area("fake").first()) == 3
+    assert loads(MovingPoints.get_bounds_by_area("fake").first()[0]).bounds == (-122.482, 36.425, -116.401, 37.659)
+    assert MovingPoints.get_bounds_by_area("fake").first()[1] == datetime.datetime(2007, 1, 1, 6, 0)
+    assert MovingPoints.get_bounds_by_area("fake").first()[2] == datetime.datetime(2007, 1, 1, 16, 0)
 

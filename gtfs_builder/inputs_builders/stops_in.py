@@ -5,10 +5,10 @@ import numpy as np
 
 class Stops(OpenGtfs):
 
-    def __init__(self, geo_tools_core, input_file="stops.txt", use_original_epsg=False):
+    def __init__(self, core, input_file="stops.txt", use_original_epsg=False):
 
-        super(Stops, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file, use_original_epsg)
-        self._core = geo_tools_core
+        super(Stops, self).__init__(core, core.path_data, input_file, use_original_epsg)
+        self._core = core
 
         self.__check_if_stops_found()
         self.__get_real_stops()

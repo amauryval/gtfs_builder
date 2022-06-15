@@ -1,3 +1,7 @@
+from datetime import datetime
+from typing import Union
+from typing import List
+
 from .base import Base
 from .base import CommonQueries
 
@@ -9,15 +13,13 @@ from sqlalchemy.dialects.postgresql import TSRANGE, ExcludeConstraint
 from sqlalchemy import Index
 from geoalchemy2 import Geometry
 
-from shapely.wkt import loads
-
 
 class MovingPoints(Base, CommonQueries):
     __table_args__ = (
         # ExcludeConstraint(('line_id', '='), ('trip_id', '='), ('pos', '&&')),
         # PrimaryKeyConstraint("stop_code", "date_time"),
         ExcludeConstraint(('trip_id', '='), ('stop_code', '='), ('study_area', '='), ('validity_range', '&&')),
-        Index('idx_dates_area', "validity_range", "study_area"),
+        Index('idx_dates_area_geometry', "validity_range", "study_area", "geometry"),
         Index('idx_geom_study_area', "geometry", "study_area"),
         {'schema': 'gtfs_data'}
     )
@@ -29,26 +31,39 @@ class MovingPoints(Base, CommonQueries):
     geometry = Column(Geometry('POINT', 4326))
     route_type = Column(String(32))
     stop_name = Column(String(32))
-    pos = Column(Float)
     route_long_name = Column(String)
-    route_short_name = Column(String(32))
-    direction_id = Column(String(12))
 
     @classmethod
-    def filter_by_date_area(cls, date, area_name):
+    def filter_by_date_area(cls, date: datetime, area_name: str, geometry_bounds: Union[List[str], List[float]]):
         return cls._session.query(
-            cls
+            func.st_x(cls.geometry).label("x"),
+            func.st_y(cls.geometry).label("y"),
+            cls.route_long_name,
+            cls.route_type
         ).filter(
             and_(
                 cls.study_area == area_name,
                 cls.validity_range.op('@>')(date),
+                cls.geometry.intersects(func.st_makeenvelope(*geometry_bounds))
             )
         )
 
     @classmethod
-    def get_bounds_by_area(cls, area_name):
-        return loads(cls._session.query(
-            func.st_astext(func.st_extent(cls.geometry))
+    def get_bounds_by_area(cls, area_name: str):
+        return cls._session.query(
+            func.st_astext(func.st_extent(cls.geometry)).label("data_bounds"),
+            func.min(func.lower(cls.validity_range)).label("start_date"),
+            func.max(func.upper(cls.validity_range)).label("end_date"),
         ).filter(
             cls.study_area == area_name,
-        ).first()[0]).bounds
+        ).group_by(
+            cls.study_area
+        )
+
+    @classmethod
+    def get_areas(cls):
+        return cls._session.query(
+            cls.study_area
+        ).group_by(
+            cls.study_area
+        )

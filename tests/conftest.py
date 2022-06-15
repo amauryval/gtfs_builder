@@ -1,6 +1,7 @@
 import pytest
 
-from gtfs_builder.app.routes import gtfs_routes
+from gtfs_builder.app.routes_from_db import gtfs_routes_from_db
+from gtfs_builder.app.routes_from_files import gtfs_routes_from_files
 
 from flask import Flask
 
@@ -63,7 +64,7 @@ def pytest_sessionfinish(session):
 
 
 @pytest.fixture(scope="module")
-def flask_client():
+def flask_client_from_file():
 
     areas_list = ["fake"]
 
@@ -76,7 +77,21 @@ def flask_client():
     }
 
     app = Flask(__name__)
-    app.register_blueprint(gtfs_routes(data, areas_list=areas_list), url_prefix="")
+    app.register_blueprint(gtfs_routes_from_files(data, areas_list=areas_list), url_prefix="")
+    app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+    app.config['JSON_SORT_KEYS'] = False
+    app.config['DEBUG'] = True
+    app.config['TESTING'] = True
+    gtfs_api_client = app.test_client()
+
+    yield gtfs_api_client
+
+
+@pytest.fixture(scope="module")
+def flask_client_from_db():
+
+    app = Flask(__name__)
+    app.register_blueprint(gtfs_routes_from_db(get_db_session()), url_prefix="")
     app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
     app.config['JSON_SORT_KEYS'] = False
     app.config['DEBUG'] = True

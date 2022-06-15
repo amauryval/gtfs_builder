@@ -20,9 +20,9 @@ class Routes(OpenGtfs):
 
     __COLUMNS_TO_ADD = ["route_text_color"]
 
-    def __init__(self, geo_tools_core, transport_modes: Optional[List[str]] = None, input_file="routes.txt"):
+    def __init__(self, core, transport_modes: Optional[List[str]] = None, input_file="routes.txt"):
 
-        super(Routes, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file)
+        super(Routes, self).__init__(core, core.path_data, input_file)
 
         self._input_file = input_file
 

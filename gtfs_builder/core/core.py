@@ -1,4 +1,5 @@
 import os
+from typing import Dict
 
 import pandas as pd
 import geopandas as gpd
@@ -6,9 +7,6 @@ import geopandas as gpd
 from shapely.geometry import LineString
 
 import json
-
-from gtfs_builder.core.optim_helper import DfOptimizer
-
 
 class InputDataNotFound(Exception):
     pass
@@ -34,13 +32,13 @@ class OpenGtfs:
 
     _DEFAULT_EPSG = 4326
 
-    def __init__(self, geo_tools_core, path_data, input_file, use_original_epsg=False):
+    def __init__(self, core, path_data: str, input_file: str, use_original_epsg: bool = False) -> None:
         """
 
         :param input_file: the name of the input file with its extension
         :type input_file: str
         """
-        self.core = geo_tools_core
+        self.core = core
         self._path_data = path_data
 
         with open(os.path.join(self._path_data, "inputs_attrs.json")) as output:
@@ -63,7 +61,7 @@ class OpenGtfs:
         self._check_input_path()
         self._open_input_data(default_field_and_type)
 
-    def _check_input_path(self):
+    def _check_input_path(self) -> None:
         """
 
         :return: None
@@ -83,7 +81,7 @@ class OpenGtfs:
 
         raise InputDataNotFound("Input data path not found!")
 
-    def _open_input_data(self, default_fields_and_type):
+    def _open_input_data(self, default_fields_and_type: Dict) -> None:
         """
 
         :type default_fields_and_type: dict
@@ -119,7 +117,7 @@ class OpenGtfs:
             raise OpeningProblem(err)
 
     @property
-    def data(self):
+    def data(self) -> pd.DataFrame:
         """
         Return dataframe
 
@@ -127,11 +125,9 @@ class OpenGtfs:
         :rtype: pandas.DataFrame
         """
         if not self.is_df_empty(self._input_data):
-            input_data = DfOptimizer(self._input_data)
-            self.core.logger.info(input_data.memory_usage)
-            return input_data.data
+             return self._input_data
 
-    def gdf_from_df_long_lat(self, df, longitude, latitude):
+    def gdf_from_df_long_lat(self, df: pd.DataFrame, longitude: str, latitude: str) -> gpd.GeoDataFrame:
         """
         Create a geodataframe with longitude and latitude fields
 
@@ -155,7 +151,7 @@ class OpenGtfs:
 
         return gdf
 
-    def group_by_id_from_point_to_create_linestring(self, gdf, id_field, sequence_field, geom_field="geometry"):
+    def group_by_id_from_point_to_create_linestring(self, gdf: gpd.GeoDataFrame, id_field: str, sequence_field: str, geom_field: str = "geometry") -> gpd.GeoDataFrame:
         """
 
         :param gdf: geodataframe
@@ -174,7 +170,7 @@ class OpenGtfs:
         )
         return gdf
 
-    def is_df_empty(self, df):
+    def is_df_empty(self, df: pd.DataFrame) -> bool:
         """
         Check if dataframe is empty
 
@@ -186,8 +182,9 @@ class OpenGtfs:
 
         if df.shape[0] == 0:
             return True
+        return False
 
-    def _reproject_gdf(self, gdf):
+    def _reproject_gdf(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         # if self._to_epsg is not None:
         #     gdf = gdf.to_crs(epsg=self._to_epsg)
         return gdf
