@@ -6,7 +6,7 @@ import datetime
 
 class CalendarDates(OpenGtfs):
 
-    def __init__(self, core, input_file="calendar_dates.txt"):
+    def __init__(self, core, input_file: str = "calendar_dates.txt") -> None:
 
         super(CalendarDates, self).__init__(core, core.path_data, input_file)
 
@@ -15,5 +15,5 @@ class CalendarDates(OpenGtfs):
 
         self._format_date_column()
 
-    def _format_date_column(self):
+    def _format_date_column(self) -> None:
         self._input_data["date"] = [datetime.datetime.strptime(row, '%Y%m%d') for row in self._input_data["date"]]

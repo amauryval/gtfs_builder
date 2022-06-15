@@ -3,7 +3,7 @@ from gtfs_builder.core.core import OpenGtfs
 
 class StopsTimes(OpenGtfs):
 
-    def __init__(self, core, input_file="stop_times.txt"):
+    def __init__(self, core, input_file: str = "stop_times.txt") -> None:
 
         super(StopsTimes, self).__init__(core, core.path_data, input_file)
 

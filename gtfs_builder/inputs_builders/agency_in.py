@@ -3,7 +3,7 @@ from gtfs_builder.core.core import OpenGtfs
 
 class Agency(OpenGtfs):
 
-    def __init__(self, core, input_file="agency.txt"):
+    def __init__(self, core, input_file: str = "agency.txt") -> None:
 
         super(Agency, self).__init__(core, core.path_data, input_file)
 
