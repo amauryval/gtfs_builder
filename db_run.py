@@ -1,6 +1,15 @@
+import os
+
+from dotenv import load_dotenv
+from geolib import GeoLib
+from gtfs_builder.main import str_to_dict_from_regex
+
+from gtfs_builder.db import Base
 from gtfs_builder.main import GtfsFormater
 
 import json
+
+load_dotenv()
 
 
 def build_data(input_params_file_path: str) -> None:
@@ -18,6 +27,8 @@ def build_data(input_params_file_path: str) -> None:
             build_shape_data=input_data["build_shape_id"],
             interpolation_threshold=input_data["interpolation_threshold"],
             multiprocess=input_data["multiprocess"],
+            output_format=os.environ.get("mode"),
+            db_mode=input_data.get("db_mode", "append")
         )
 
 
