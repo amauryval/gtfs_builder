@@ -25,6 +25,15 @@ class OpenGtfs:
 
     """
 
+    __slots__ = (
+        "core",
+        "_path_data",
+        "_input",
+        "_to_epsg",
+        "file_path",
+        "_input_data"
+    )
+
     _SEPARATOR = ","
     _OUTPUT_ESPG_KEY = "output_epsg"
 
@@ -53,10 +62,9 @@ class OpenGtfs:
 
         self._input = input_file
 
+        self._to_epsg = None
         if not use_original_epsg:
             self._to_epsg = config_file_path[self._OUTPUT_ESPG_KEY]
-        else:
-            self._to_epsg = None
 
         self._check_input_path()
         self._open_input_data(default_field_and_type)
