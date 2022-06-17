@@ -7,7 +7,8 @@
     "date": "20211220",
     "build_shape_id": true,
     "interpolation_threshold": 800,
-    "multiprocess": true
+    "multiprocess": true,
+    "db_mode": "overwrite"
   },
   {
     "study_area_name": "ter",
@@ -25,7 +26,7 @@
     "transport_modes": ["tramway", "metro"],
     "date_mode": "calendar",
     "date": "20191115",
-    "build_shape_id": false,
+    "build_shape_id": true,
     "interpolation_threshold": 1000,
     "multiprocess": true
   }

@@ -11,6 +11,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgis/postgis:14-master
+        env:
+          # must specify password for PG Docker container image, see: https://registry.hub.docker.com/_/postgres?tab=description&page=1&name=10
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+
     steps:
       - uses: actions/checkout@v2
 
@@ -44,6 +56,14 @@ jobs:
         run: |
           conda install --yes --quiet mamba -c conda-forge
           mamba env create --file environment.yml
+
+      - name: Create env file
+        run: |
+          touch .env
+          echo AREAS=fake >> .env
+          echo OVERWRITE_DB=${{ secrets.OVERWRITE_DB }} >> .env
+          echo ADMIN_DB_URL=postgres://postgres:postgres@127.0.0.1:5432/test_db >> .env
+          cat .env
 
       - name: Run tests
         shell: bash

@@ -2,17 +2,18 @@ from gtfs_builder.core.core import OpenGtfs
 
 import pandas as pd
 
+import datetime
 
 class CalendarDates(OpenGtfs):
 
-    def __init__(self, geo_tools_core, input_file="calendar_dates.txt"):
+    def __init__(self, core, input_file: str = "calendar_dates.txt") -> None:
 
-        super(CalendarDates, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file)
+        super(CalendarDates, self).__init__(core, core.path_data, input_file)
 
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{input_file}' is empty")
 
-        # self._format_date_column()
+        self._format_date_column()
 
-    def _format_date_column(self):
-        self._input_data["date"] = pd.to_datetime(self._input_data['date'], format='%Y%m%d')
+    def _format_date_column(self) -> None:
+        self._input_data["date"] = [datetime.datetime.strptime(row, '%Y%m%d') for row in self._input_data["date"]]

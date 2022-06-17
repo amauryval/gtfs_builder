@@ -1,31 +1,25 @@
 
 import datetime
+from typing import Dict, List, Union
 
-def sql_query_to_list(query):
-    return [
-        {
-            column: getattr(row, column)
-            for column in row._fields
-        }
-        for row in query.all()
-    ]
+import geopandas as gpd
+
+from gtfs_builder.app.global_values import date_format
 
 
 class GtfsMain:
-    __DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-    def __init__(self, data):
+    def __init__(self, data: gpd.GeoDataFrame):
         self._data = data
 
-    def context_data_from_parquet(self):
-        assert True
+    def context_data_from_parquet(self) -> Dict:
         return {
             "data_bounds": self._data.geometry.total_bounds,
-            "start_date": datetime.datetime.fromtimestamp(min(self._data["start_date"])).strftime(self.__DATE_FORMAT),
-            "end_date": datetime.datetime.fromtimestamp(max(self._data["end_date"])).strftime(self.__DATE_FORMAT),
+            "start_date": datetime.datetime.fromtimestamp(min(self._data["start_date"])).strftime(date_format),
+            "end_date": datetime.datetime.fromtimestamp(max(self._data["end_date"])).strftime(date_format),
         }
 
-    def nodes_by_date_from_parquet(self, current_date, bounds):
+    def nodes_by_date_from_parquet(self, current_date: str, bounds: Union[List[str], List[float]]) -> Dict:
 
         current_date = datetime.datetime.fromisoformat(current_date).timestamp()
 
@@ -34,6 +28,5 @@ class GtfsMain:
         filtered_data = filtered_data.cx[bounds[0]:bounds[2], bounds[1]:bounds[3]]
         filtered_data = filtered_data[["x", "y", "route_long_name", "route_type"]]
 
-        return {
-            "data_geojson": filtered_data.to_dict("records")
-        }
+        # TODO remove data_geojson key
+        return filtered_data.to_dict("records")

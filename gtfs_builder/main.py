@@ -1,11 +1,17 @@
-from typing import List
+from typing import List, Tuple
 from typing import Dict
 from typing import Optional
 
+from pandas import Timestamp
+
+from gtfs_builder.db.base import Base
+from gtfs_builder.db.moving_points import MovingPoints
+import re
+
 import os
 import datetime
-import itertools
 import copy
+from pyproj import Geod
 
 import shapely
 from geolib import GeoLib
@@ -13,8 +19,6 @@ from geolib.misc.processing import method_processing_modes
 from itertools import chain
 import numpy as np
 import geopandas as gpd
-
-from gtfs_builder.core.optim_helper import DfOptimizer
 
 from gtfs_builder.inputs_builders.shapes_in import Shapes
 from gtfs_builder.inputs_builders.stops_in import Stops
@@ -44,8 +48,17 @@ class ShapeIdError(Exception):
     pass
 
 
+def str_to_dict_from_regex(string_value, regex):
+    pattern = re.compile(regex)
+    extraction = pattern.match(string_value)
+    return extraction.groupdict()
+
+
 class GtfsFormater(GeoLib):
     pd.options.mode.chained_assignment = None
+
+    __MAIN_DB_SCHEMA = "gtfs_data"
+    __PG_EXTENSIONS = ["btree_gist", "postgis"]
 
     __COORDS_PRECISION = 3
 
@@ -55,7 +68,7 @@ class GtfsFormater(GeoLib):
     __TRIPS_FILE_UPDATED_NAME = "trips_updated.txt"
 
     __SUB_STOPS_RESOLUTION = 200  # 1pt for each 25 meters
-    __DAYS_MAPPING = [
+    __DAYS_MAPPING = (
         "monday",
         "tuesday",
         "wednesday",
@@ -63,7 +76,7 @@ class GtfsFormater(GeoLib):
         "friday",
         "saturday",
         "sunday",
-    ]
+    )
 
     __MOVING_DATA_COLUMNS = [
         "start_date",
@@ -76,7 +89,6 @@ class GtfsFormater(GeoLib):
         "route_type",
         "route_long_name",
         "route_short_name",
-        "direction_id",
     ]
 
     __MOVING_STOPS_OUTPUT_PARQUET_FILE = "moving_stops.parq"
@@ -84,16 +96,21 @@ class GtfsFormater(GeoLib):
     __BASE_LINES_OUTPUT_PARQUET_FILE = "base_lines_data.parq"
 
     def __init__(self,
-        study_area_name,
-        data_path,
+        study_area_name: str,
+        data_path: str,
         transport_modes: Optional[List[str]] = None,
         date_mode: str = "calendar",
         date: str = None,
         build_shape_data: bool = False,
         interpolation_threshold: int = 1000,
-        multiprocess: bool = False
+        multiprocess: bool = False,
+        output_format: str = "file",
+        db_mode: str = "append"
     ):
         super().__init__()
+
+        self._output_format = output_format
+        self._db_mode = db_mode
 
         self._study_area_name = study_area_name
         self.path_data = data_path
@@ -105,13 +122,43 @@ class GtfsFormater(GeoLib):
         self._multiprocess = multiprocess
         self.run()
 
-    def run(self):
+    def run(self) -> None:
         self.logger.info(f"Computing {self._study_area_name} GTFS...")
         self._prepare_inputs()
         self._build_stops_data()
         self._build_path()
 
-    def _prepare_inputs(self):
+    def _prepare_db(self) -> None:
+        self.logger.info('Prepare database')
+
+        self._credentials = {
+            **str_to_dict_from_regex(
+                os.environ["ADMIN_DB_URL"],
+                ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
+            ),
+        }
+
+        db_sessions = self.init_db(
+            **self._credentials,
+            extensions=self.__PG_EXTENSIONS,
+            overwrite=False
+        )
+        self._engine = db_sessions["engine"]
+        schemas = Base.metadata._schemas
+        for schema in schemas:
+            self.init_schema(self._engine, schema)
+        if self._db_mode == "overwrite":  # drop tables
+            Base.metadata.drop_all(self._engine)
+            Base.metadata.create_all(self._engine)
+
+        tables = [table.fullname for table in Base.metadata.sorted_tables]
+        if len(tables) > 0:
+            tables_str = ', '.join(tables)
+            self.logger.info(f'({len(tables)}) tables  found: {tables_str}')
+        else:
+            raise ValueError("Not tables found on DB!")
+
+    def _prepare_inputs(self) -> None:
         self._stop_times_data = StopsTimes(self).data
         self._stops_data = Stops(self).data
         self._trips_data = Trips(self).data
@@ -129,7 +176,7 @@ class GtfsFormater(GeoLib):
             self._calendar_data = Calendar(self).data
         self._routes_data = Routes(self, transport_modes=self._transport_modes).data
 
-    def _compute_shapes_txt(self):
+    def _compute_shapes_txt(self) -> None:
         self.logger.info("Shapes computing...")
         stop_times_data = self._stop_times_data.sort_values(by=["trip_id", "stop_sequence"])
         stop_times_data = stop_times_data.merge(self._stops_data[["stop_id", "geometry"]], left_on='stop_id', right_on='stop_id').sort_values(["trip_id", "stop_sequence"])
@@ -145,12 +192,11 @@ class GtfsFormater(GeoLib):
         )
 
         # update trips with shape_id features computed
-        trips = Trips(self).data
-        if "shape_id" in trips.columns:
-            trips.drop(columns=["shape_id"], inplace=True)
-        trips_updated = trips.merge(stop_ids_from_trip_id[["trip_id", "shape_id"]], on="trip_id")
+        # trips = Trips(self).data
+        if "shape_id" in self._trips_data.columns:
+            self._trips_data.drop(columns=["shape_id"], inplace=True)
+        trips_updated = self._trips_data.merge(stop_ids_from_trip_id[["trip_id", "shape_id"]], on="trip_id")
         trips_updated.to_csv(os.path.join(self.path_data, self.__TRIPS_FILE_UPDATED_NAME), index=False)
-
 
         # create a new id to remove similar line when grouping on it
         stop_ids_from_trip_id_grouped_by_similar = stop_ids_from_trip_id.groupby("shape_id").agg(
@@ -181,7 +227,7 @@ class GtfsFormater(GeoLib):
             ["shape_id", "shape_pt_lon", "shape_pt_lat", "shape_pt_sequence", "shape_dist_traveled"]
         ].to_csv(os.path.join(self.path_data, self.__SHAPES_FILE_CREATED_NAME), index=False)
 
-    def _build_stops_data(self):
+    def _build_stops_data(self) -> None:
         self._stop_times_data.set_index("stop_id", inplace=True)
         self._stops_data.set_index("stop_id", inplace=True)
         stops_data = self._stops_data.join(self._stop_times_data).copy()
@@ -198,27 +244,26 @@ class GtfsFormater(GeoLib):
         stops_trips_routes_data_complete = stops_trips_data.merge(self._routes_data, on="route_id", how="right").copy()
         stops_trips_routes_data_complete.reset_index(inplace=True)
 
-        data_otptimized = DfOptimizer(stops_trips_routes_data_complete)
-        self._stops_data_build = data_otptimized.data
+        self._stops_data_build = stops_trips_routes_data_complete
 
-    def _build_path(self):
+    def _build_path(self) -> None:
         self.logger.info("Go to path building")
-        self._temp_interpolated_points_cache = {}
+        self._CACHE_DATA = {}
+
+        date = datetime.datetime.strptime(self._date, '%Y%m%d')
 
         #TODO run at the start and filter stop as soon as possible
         if self._date_mode == "calendar_dates":
-            service_id_selected = self._calendar_dates_data.loc[self._calendar_dates_data['date'] == self._date]
+
+            service_id_selected = self._calendar_dates_data.loc[self._calendar_dates_data['date'] == date]
             # initializing interpolated points cache
 
             service_id_selected = service_id_selected.groupby("date").agg({
                 "date": "first",
                 "service_id": lambda x: list(set(list(x)))
             })
-            service_id_selected = service_id_selected.to_dict("records")
-
 
         if self._date_mode == "calendar":
-            date = datetime.datetime.strptime(self._date, '%Y%m%d')
 
             data = self._calendar_data.loc[
                 (self._calendar_data[date.strftime("%A").lower()] == "1")
@@ -232,9 +277,9 @@ class GtfsFormater(GeoLib):
                 "date": "first",
                 "service_id": lambda x: list(set(list(x)))
             })
-            service_id_selected["date"] = [row.strftime("%Y%m%d") for row in service_id_selected["date"]]
-            service_id_selected = service_id_selected.to_dict("records")
 
+        service_id_selected["date"] = [row.strftime("%Y%m%d") for row in service_id_selected["date"]]
+        service_id_selected = service_id_selected.to_dict("records")
 
         # EACH DAY
         for service in service_id_selected:
@@ -249,26 +294,22 @@ class GtfsFormater(GeoLib):
 
             return
 
-    def compute_moving_geom(self, stops_on_day, lines_on_day, date):
+    def compute_moving_geom(self, stops_on_day: gpd.GeoDataFrame, lines_on_day: gpd.GeoDataFrame, date: datetime) -> None:
+        stops_on_day["arrival_time"] = [self._compute_date(date, row) for row in stops_on_day["arrival_time"]]
+        stops_on_day["departure_time"] = [self._compute_date(date, row) for row in stops_on_day["departure_time"]]
+        stops_on_day["geometry"] = [self._compute_geom_precision(row, self.__COORDS_PRECISION) for row in stops_on_day["geometry"]]
 
-        stops_on_day = stops_on_day.assign(
-            arrival_time=[self._compute_date(date, row) for row in stops_on_day["arrival_time"]],
-            departure_time=[self._compute_date(date, row) for row in stops_on_day["departure_time"]],
-            geometry=[self._compute_geom_precision(row, self.__COORDS_PRECISION) for row in stops_on_day["geometry"]],
-        )
-        stops_on_day["x"] = stops_on_day["geometry"].x
-        stops_on_day["y"] = stops_on_day["geometry"].y
         stops_on_day = stops_on_day.rename({'arrival_time': 'start_date', 'departure_time': 'end_date'}, axis=1)
 
         if self._multiprocess:
             processes = [
-                [self.compute_line, line, stops_on_day, date]
+                [self.compute_line, line, stops_on_day]
                 for line in lines_on_day.to_dict('records')
             ]
             data_completed = method_processing_modes(processes, mode="processing")
         else:
             data_completed = [
-                self.compute_line(line, stops_on_day, date)
+                self.compute_line(line, stops_on_day)
                 for line in lines_on_day.to_dict('records')
             ]
 
@@ -276,43 +317,45 @@ class GtfsFormater(GeoLib):
         data_completed = list(filter(lambda x: not isinstance(x, list), data_completed))
         data_completed = pd.concat(data_completed)
 
-        data_completed["x"] = data_completed.geometry.x
-        data_completed["y"] = data_completed.geometry.y
+        if self._output_format == "db":
+            self._prepare_db()
+            data_completed["study_area"] = self._study_area_name
+            input_data = self.gdf_design_checker(self._engine, self.__MAIN_DB_SCHEMA, MovingPoints.__table__.name, data_completed, epsg=4326)
+            dict_data = self.df_to_dicts_list(input_data, 4326)
+            self.dict_list_to_db(self._engine, dict_data, self.__MAIN_DB_SCHEMA, MovingPoints.__table__.name)
 
+        else:
+            data_sp = GeoDataFrame(data_completed, geometry="geometry")
+            data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
 
-        data_sp = GeoDataFrame(data_completed)
-        data_sp = data_sp[self.__MOVING_DATA_COLUMNS].sort_values("start_date")
-        # data = DfOptimizer(data).data
+            data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
+            data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
 
-        data_sp["start_date"] = [int(row.timestamp()) for row in data_sp["start_date"]]
-        data_sp["end_date"] = [int(row.timestamp()) for row in data_sp["end_date"]]
+            data_sp = data_sp.astype({
+                "start_date": "float",
+                "end_date": "float",
+                "x": "float",
+                "y": "float",
+                "stop_name": "category",
+                "stop_code": "category",
+                "route_type": "category",
+                "route_long_name": "category",
+                "route_short_name": "category",
+            })
 
-        data_sp = data_sp.astype({
-            "start_date": "float",
-            "end_date": "float",
-            "x": "float",
-            "y": "float",
-            "stop_name": "category",
-            "stop_code": "category",
-            "route_type": "category",
-            "route_long_name": "category",
-            "route_short_name": "category",
-            "direction_id": "category",
-        })
+            data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
 
-        data_sp.to_parquet(f"{self._study_area_name}_{self.__MOVING_STOPS_OUTPUT_PARQUET_FILE}", compression='gzip')
-
-    def compute_fixed_geom(self, stops_data, lines_data):
+    def compute_fixed_geom(self, stops_data: gpd.GeoDataFrame, lines_data: gpd.GeoDataFrame) -> None:
         stops_data_copy = stops_data.copy(deep=True)
         stops = stops_data_copy.groupby(["stop_code"], sort=False).agg({
             "stop_code": "first",
             "geometry": "first",
-            "stop_name": lambda x: list(set(list(x))),
-            "route_short_name": lambda x: list(set(list(x))),
-            "route_desc": lambda x: list(set(list(x))),
-            "route_type": lambda x: list(set(list(x))),
-            "route_color": lambda x: list(set(list(x))),
-            "route_text_color": lambda x: list(set(list(x))),
+            "stop_name": lambda x: set(list(x)),
+            "route_short_name": lambda x: set(list(x)),
+            "route_desc": lambda x: set(list(x)),
+            "route_type": lambda x: set(list(x)),
+            "route_color": lambda x: set(list(x)),
+            "route_text_color": lambda x: set(list(x)),
         }).dropna()
         stops_data = gpd.GeoDataFrame(stops)
         data_sp = GeoDataFrame(stops_data)
@@ -326,28 +369,27 @@ class GtfsFormater(GeoLib):
         ).groupby(["shape_id"]).agg({
             "shape_id": "first",
             "geometry": "first",
-            "route_desc": lambda x: list(set(list(x))),
-            "route_type": lambda x: list(set(list(x))),
-            "route_short_name": lambda x: list(set(list(x))),
-            "direction_id": lambda x: list(set(list(x))),
-            "route_color": lambda x: list(set(list(x))),
-            "route_text_color": lambda x: list(set(list(x))),
+            "route_desc": lambda x: set(list(x)),
+            "route_type": lambda x: set(list(x)),
+            "route_short_name": lambda x: set(list(x)),
+            "direction_id": lambda x: set(list(x)),
+            "route_color": lambda x: set(list(x)),
+            "route_text_color": lambda x: set(list(x)),
         })
         lines_data = gpd.GeoDataFrame(lines)
         data_sp = GeoDataFrame(lines_data)
         data_sp.to_parquet(f"{self._study_area_name}_{self.__BASE_LINES_OUTPUT_PARQUET_FILE}", compression='gzip')
 
-    def compute_line(self, line, stops_on_day, date):
+    def compute_line(self, line: Dict, stops_on_day: gpd.GeoDataFrame) -> pd.DataFrame:
         try:
 
             input_line_id = line["shape_id"]
-
             line_stops = self._get_stops_line(input_line_id, stops_on_day)
 
             trips_to_proceed = set(line_stops["trip_id"].to_list())
 
             processes = [
-                [self.compute_trip, date, line, line_stops, trip_id]
+                [self.compute_trip, line, line_stops, trip_id]
                 for trip_id in trips_to_proceed
             ]
 
@@ -356,32 +398,27 @@ class GtfsFormater(GeoLib):
         except ShapeIdError:
             return []
 
-        # return itertools.chain(*trip_stops_computed)
         return pd.concat(trip_stops_computed)
 
 
-    def compute_trip(self, date, line, line_stops, trip_id):
+    def compute_trip(self, line: Dict, line_stops: gpd.GeoDataFrame, trip_id: str) -> gpd.GeoDataFrame:
         trip_stops = line_stops.loc[line_stops["trip_id"] == trip_id]
-        trip_stops_computed = self._build_interpolation_stops_on_trip(date, trip_id, trip_stops, line)
+        trip_stops_computed = self._build_interpolation_stops_on_trip(trip_stops, line)
 
         return trip_stops_computed
 
-    def _get_stops_line(self, input_line_id, stops_on_day):
+    def _get_stops_line(self, input_line_id: str, stops_on_day: gpd.GeoDataFrame) -> gpd.geodataframe:
 
-        stops_line = stops_on_day.loc[stops_on_day["shape_id"] == input_line_id].copy()
+        stops_line = stops_on_day.loc[stops_on_day["shape_id"] == input_line_id]
 
-        line_caracteristics = np.unique(stops_line[["route_type", "route_short_name", "route_long_name"]].values)
+        line_caracteristics = pd.unique(stops_line[["route_type", "route_short_name", "route_long_name"]].values.ravel('K'))
         # TODO remove this exception, simplification can be done...
-        # if len(line_caracteristics) > 2:
-        #     raise ShapeIdError(
-        #         f"line name proceed should be unique (count: {len(line_caracteristics)} ; {','.join(line_caracteristics)}")
         self.logger.info(f"> Working line {input_line_id} ({', '.join(line_caracteristics)})")
-        stops_line.sort_values(by=["trip_id", "stop_sequence"], inplace=True)
 
-        return stops_line
+        return stops_line.sort_values(by=["trip_id", "stop_sequence"])
 
     @staticmethod
-    def compute_wg84_line_length(input_geom):
+    def compute_wg84_line_length(input_geom: LineString) -> float:
         """
         Compute the length of a wg84 line (LineString and MultiLineString)
         :param input_geom: input geometry
@@ -389,111 +426,96 @@ class GtfsFormater(GeoLib):
         :return: the line length
         :rtype: float
         """
-        from pyproj import Geod
 
         line_length = Geod(ellps="WGS84").geometry_length(input_geom)
 
         return line_length
 
     @staticmethod
-    def _compute_date(date_to_add, feature_date):
+    def _compute_date(date_to_add: datetime, feature_date: str) -> datetime:
         hours, minutes, seconds = map(int, feature_date.split(":"))
         return date_to_add + datetime.timedelta(seconds=seconds, minutes=minutes, hours=hours)
 
     @staticmethod
-    def _compute_geom_precision(feature_geom, precision):
+    def _compute_geom_precision(feature_geom: Point, precision: int) -> Point:
         return shapely.wkt.loads(shapely.wkt.dumps(feature_geom, rounding_precision=precision))
 
-    def _build_interpolation_stops_on_trip(self, date, trip_id, trip_stops, line):
+    def _build_interpolation_stops_on_trip(self, trip_stops: gpd.GeoDataFrame, line: Dict) -> gpd.GeoDataFrame:
 
         line_geom_remaining = line["geometry"]
 
         trip_stops["pos"] = np.arange(len(trip_stops))
 
-        trip_stops_elements_full_list = []
-        trip_stops_elements_full_list.append(trip_stops)
-
         trip_stops_elements = trip_stops.to_dict('records')
-        stop_pairs = list(zip(trip_stops_elements, trip_stops_elements[1:]))
-
-        # compute cached nodes
-        pairs_already_computed = [
-            (pair, self._temp_interpolated_points_cache[f"{pair[0]['stop_code']}_{pair[-1]['stop_code']}"])
-            for pair in stop_pairs
-            if f"{pair[0]['stop_code']}_{pair[-1]['stop_code']}" in self._temp_interpolated_points_cache
-        ]
-        trip_stops_elements_full_list.extend([
-            self._compute_cached_nodes(pair, cache_gdf)
-            for pair, cache_gdf in pairs_already_computed
-        ])
+        stop_pairs = zip(trip_stops_elements, trip_stops_elements[1:])
 
         # compute new nodes
-        pairs_to_compute = filter(lambda x: f"{x[0]['stop_code']}_{x[-1]['stop_code']}" not in self._temp_interpolated_points_cache, stop_pairs)
-        trip_stops_elements_full_list.extend([
-            self._compute_new_nodes(pair, line_geom_remaining)
-            for pair in pairs_to_compute
-        ])
-
+        for pair in stop_pairs:
+            trip_stops_elements.extend(self._compute_new_nodes(pair, line_geom_remaining))
         # finalize
-        trip_data = pd.concat(trip_stops_elements_full_list)
-        for column in trip_data.columns:
-            if column not in ["start_date", "end_date", "pos", "geometry"]:
-                trip_data.loc[:, column] = trip_data[column].unique()[0]
-
+        trip_data = gpd.GeoDataFrame(trip_stops_elements).sort_values("pos")
+        trip_data = trip_data.loc[trip_data["start_date"] != trip_data["end_date"]]
+        trip_data["x"] = trip_data.geometry.x
+        trip_data["y"] = trip_data.geometry.y
+        trip_data["validity_range"] = [self._format_validity_range(*row) for row in zip(trip_data["start_date"], trip_data["end_date"])]
         return trip_data
 
-    def _compute_new_nodes(self, pair, line_geom_remaining):
-        first_stop = pair[0]
-        next_stop = pair[-1]
+    def _compute_new_nodes(self, pair: Tuple[Dict], line_geom_remaining: LineString) -> List[Dict]:
+        first_stop, next_stop = pair
 
         start_date = first_stop["end_date"]
         end_date = next_stop["start_date"]
 
-        line_stop_geom, _ = self._get_dedicated_line_from_stop(first_stop["geometry"], next_stop["geometry"],
-                                                               line_geom_remaining)
+        stop_id_pairs = f"{first_stop['stop_id']}_{next_stop['stop_id']}"
+        if stop_id_pairs not in self._CACHE_DATA:
 
-        # no need the first and the last to avoid duplicates
-        interpolation_value = int(
-            self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
-        # if interpolation_value == 0:
-        #     interpolation_value = 1
+            line_stop_geom, _ = self._get_dedicated_line_from_stop(
+                first_stop["geometry"],
+                next_stop["geometry"],
+                line_geom_remaining
+            )
 
-        interpolated_points = tuple(
-            line_stop_geom.interpolate(value, normalized=True)
-            for value in np.linspace(0, 1, interpolation_value)
-        )
+            # no need the first and the last to avoid duplicates
+            interpolation_value = int(
+                self.compute_wg84_line_length(line_geom_remaining) / self._interpolation_threshold)  # create func
 
-        data = gpd.GeoDataFrame({
-            "pos": map(lambda x: first_stop['pos'] + x / 100, range(0, len(interpolated_points))),
-            'geometry': map(lambda x: self._compute_geom_precision(x, self.__COORDS_PRECISION), interpolated_points),
-        })
+            interpolated_points = tuple(
+                line_stop_geom.interpolate(value, normalized=True)
+                for value in np.linspace(0, 1, interpolation_value)
+            )
 
-        object_id = f"{first_stop['stop_code']}_{next_stop['stop_code']}"
-        self._temp_interpolated_points_cache[object_id] = data
+            interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()
+            interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
 
-        intermediate_node_gdf = self.__compute_intermediates_daterange_nodes(data, start_date, end_date)
+            data = [
+                self._compute_node(first_stop, enum, point, dates)
+                for enum, (point, dates) in enumerate(zip(interpolated_points, interpolated_datetime_pairs))
+            ]
 
-        return intermediate_node_gdf
+            self._CACHE_DATA[f"{first_stop['stop_id']}_{next_stop['stop_id']}"] = [feature["geometry"] for feature in data]
+            self._CACHE_DATA[f"{next_stop['stop_id']}_{first_stop['stop_id']}"] = [feature["geometry"] for feature in data][::-1]
 
-    def _compute_cached_nodes(self, pair, cache_gdf):
-        start_date = pair[0]["end_date"]
-        end_date = pair[-1]["start_date"]
+        else:
+            interpolate_points_cache = self._CACHE_DATA[f"{first_stop['stop_id']}_{next_stop['stop_id']}"]
 
-        intermediate_node_gdf = self.__compute_intermediates_daterange_nodes(cache_gdf, start_date, end_date)
-        return intermediate_node_gdf
+            interpolated_datetime = pd.date_range(start_date, end_date, periods=len(interpolate_points_cache)).to_list()
+            interpolated_datetime_pairs = zip(interpolated_datetime, interpolated_datetime[1:])
+            data = [
+                self._compute_node(first_stop, enum, point, dates)
+                for enum, (point, dates) in enumerate(zip(interpolate_points_cache, interpolated_datetime_pairs))
+            ]
 
-    def __compute_intermediates_daterange_nodes(self, input_gdf, start_date, end_date):
-        gdf_found = input_gdf.copy(deep=True)
-        # compute stop dates
-        interpolation_value = gdf_found.shape[0] + 1  # TODO check this... +1... needed for pd.date_range
-        interpolated_datetime = pd.date_range(start_date, end_date, periods=interpolation_value).to_list()
-        interpolated_datetime_pairs = list(zip(interpolated_datetime, interpolated_datetime[1:]))
-        gdf_found["start_date"] = list(map(lambda x: x[0], interpolated_datetime_pairs))
-        gdf_found["end_date"] = list(map(lambda x: x[-1], interpolated_datetime_pairs))
+        return data
 
-        return gdf_found
+    def _compute_node(self, source_node: Dict, enum: int, point: Point, dates: Tuple) -> Dict:
+        source_node_copy = copy.deepcopy(source_node)
+        source_node_copy["pos"] = source_node['pos'] + enum / 100
+        source_node_copy["geometry"] = self._compute_geom_precision(point, self.__COORDS_PRECISION)
+        source_node_copy["start_date"] = dates[0]
+        source_node_copy["end_date"] = dates[-1]
+        return source_node_copy
 
-    def _get_dedicated_line_from_stop(self, first_stop_geom, next_stop_geom, line_shape_geom_remained):
+    def _get_dedicated_line_from_stop(self, first_stop_geom: Point, next_stop_geom: Point, line_shape_geom_remained: LineString) -> Tuple[str, LineString]:
 
         projected_first_point = line_shape_geom_remained.interpolate(line_shape_geom_remained.project(first_stop_geom))
         projected_next_point = line_shape_geom_remained.interpolate(line_shape_geom_remained.project(next_stop_geom))
@@ -509,20 +531,10 @@ class GtfsFormater(GeoLib):
         stop_segment = line_splitted_result.geoms[0]
         line_geom_remaining = line_splitted_result.geoms[-1]
 
-        # if line_geom_remaining.equals(stop_segment):
-        #     stop_segment = LineString([projected_point, projected_point])
-
         return stop_segment, line_geom_remaining
 
-    def _get_weekday_from_date(self, date_value, day):
-
-        while date_value.weekday() != self.__DAYS_MAPPING[day]:
-            date_value += datetime.timedelta(days=1)
-
-        return date_value
-
     @staticmethod
-    def _format_validity_range(start_date=None, end_date=None):
+    def _format_validity_range(start_date: Optional[Timestamp] = None, end_date: Optional[Timestamp] = None) -> DateTimeRange:
         if start_date is None:
             start_date = datetime.min
         if end_date is None:

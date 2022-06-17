@@ -20,9 +20,9 @@ class Routes(OpenGtfs):
 
     __COLUMNS_TO_ADD = ["route_text_color"]
 
-    def __init__(self, geo_tools_core, transport_modes: Optional[List[str]] = None, input_file="routes.txt"):
+    def __init__(self, core, transport_modes: Optional[List[str]] = None, input_file: str = "routes.txt") -> None:
 
-        super(Routes, self).__init__(geo_tools_core, geo_tools_core.path_data, input_file)
+        super(Routes, self).__init__(core, core.path_data, input_file)
 
         self._input_file = input_file
 
@@ -34,12 +34,12 @@ class Routes(OpenGtfs):
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{input_file}' is empty")
 
-    def __get_available_transport_modes(self):
+    def __get_available_transport_modes(self) -> None:
         transport_found = list(self._input_data[self.__TRANSPORT_MODE_COLUMN].unique())
         self._available_transport_modes = dict(filter(lambda x: x[0] in transport_found, self._ROUTE_TYPE_MAPPING.items())).values()
 
 
-    def __filter_by_route_types(self, transport_modes: List[str]):
+    def __filter_by_route_types(self, transport_modes: List[str]) -> None:
         self.__get_available_transport_modes()
 
         transport_modes_to_use = dict(filter(lambda x: x[-1] in transport_modes, self._ROUTE_TYPE_MAPPING.items()))
@@ -47,7 +47,7 @@ class Routes(OpenGtfs):
         if self.is_df_empty(self._input_data):
             raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) ({self.__TRANSPORT_MODE_COLUMN}: Use one of : {', '.join(self._available_transport_modes)}")
 
-    def __check_columns(self):
+    def __check_columns(self) -> None:
         existing_columns = self._input_data.columns.to_list()
         for col in self.__COLUMNS_TO_ADD:
             if col not in existing_columns:
