@@ -34,7 +34,7 @@ def credentials():
     return {
         "study_area_name": "fake",
         "input_data_dir": "tests/fixture/gtfs",
-        "transport_modes": ["bus"],
+        "transport_modes": ["bus", "metro"],
         "date_mode": "calendar",
         "date": "20070604",
         "interpolation_threshold": 1000
@@ -70,7 +70,7 @@ def flask_client_from_file():
 
     data = {
         study_area: {
-            "data": sp_io.read_parquet(f"{study_area}_moving_stops.parq"),
+            "data": sp_io.read_parquet(f"{study_area.lower()}_moving_stops.parq"),
             "study_area": study_area
         }
         for study_area in areas_list
