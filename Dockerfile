@@ -2,9 +2,9 @@ FROM continuumio/miniconda3:4.11.0 AS build
 
 WORKDIR /usr/src/
 
-COPY environment.yml environment.yml
 RUN conda install -c conda-forge mamba conda-pack
 
+COPY environment.yml environment.yml
 RUN mamba env create -f environment.yml \
     && conda clean --all --yes
 
