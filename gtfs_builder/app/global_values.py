@@ -1,4 +1,5 @@
 api_cors_config = [
+    "[https:\/\/amauryval-portfolio].*[.githubprevieiw.dev]",
     "http://localhost:4200",
     "https://portfolio.amaury-valorge.com"
 ]
