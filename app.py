@@ -19,7 +19,7 @@ def get_db_session():
     credentials = {
         **str_to_dict_from_regex(
             os.environ.get("ADMIN_DB_URL"),
-            ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
+            r".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
         ),
         **{"scoped_session": True}
     }

@@ -134,7 +134,7 @@ class GtfsFormater(GeoSpatialLib):
         self._credentials = {
             **str_to_dict_from_regex(
                 os.environ["ADMIN_DB_URL"],
-                ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
+                r".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
             ),
         }
 

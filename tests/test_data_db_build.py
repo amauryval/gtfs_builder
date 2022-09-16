@@ -1,4 +1,3 @@
-import os
 from gtfs_builder.main import GtfsFormater
 
 import datetime

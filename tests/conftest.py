@@ -38,8 +38,7 @@ def credentials():
         "date_mode": "calendar",
         "date": "20070604",
         "interpolation_threshold": 1000
-  }
-
+    }
 
 @pytest.fixture
 def session_db():
