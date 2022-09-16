@@ -91,7 +91,6 @@ def test_data_processing_with_shape_id_computed(credentials, session_db):
     assert MovingPoints.get_bounds_by_area("fake").first()[2] == datetime.datetime(2007, 1, 1, 12, 15)
 
 
-
 def test_data_processing_full_data_tresh_1(credentials, session_db):
     # Warning let this test at the end of the file
     GtfsFormater(
