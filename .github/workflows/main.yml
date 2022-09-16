@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
 
     services:
       postgres:
@@ -22,57 +23,52 @@ jobs:
         # needed because the postgres container does not provide a healthcheck
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
-
     steps:
-      - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
 
-      - name: Install Miniconda
-        shell: bash
-        run: |
-          if [[ "${{ runner.os }}" = "Linux" ]]; then
-            MINICONDA_FILENAME=Miniconda3-latest-Linux-x86_64.sh
-          elif [[ "${{ runner.os }}" = "macOS" ]]; then
-            MINICONDA_FILENAME=Miniconda3-latest-MacOSX-x86_64.sh
-          elif [[ "${{ runner.os }}" = "Windows" ]]; then
-            MINICONDA_FILENAME=Miniconda3-latest-Windows-x86_64.exe
-          fi
-          curl -L -o $MINICONDA_FILENAME "https://repo.anaconda.com/miniconda/$MINICONDA_FILENAME"
-          bash ${MINICONDA_FILENAME} -b -f -p $HOME/miniconda3
+    - name: Set up python
+      id: setup-python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10.7'
 
-      - name: Setup paths
-        shell: bash
-        run: |
-          echo "$HOME/miniconda3/bin" >> $GITHUB_PATH
-          echo "$HOME/miniconda3/Scripts" >> $GITHUB_PATH
-          if [ "${{ matrix.os }}" != "windows-latest" ]; then
-            echo "CONDA_EXEC=${CONDA}/bin/conda"
-          else
-            echo "CONDA_EXEC=C:\Miniconda\condabin\conda.bat"
-          fi
+    - name: Install and configure Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.2.0
+        virtualenvs-create: true
+        virtualenvs-in-project: true
 
-      - name: Configure conda
-        env:
-          CONDA_REQS: "conda conda-verify"
-        run: |
-          conda install --yes --quiet mamba -c conda-forge
-          mamba env create --file environment.yml
+    - name: Set up cache
+      uses: actions/cache@v2
+      id: cached-poetry-dependencies
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Create env file
-        run: |
-          touch .env
-          echo AREAS=fake >> .env
-          echo OVERWRITE_DB=${{ secrets.OVERWRITE_DB }} >> .env
-          echo ADMIN_DB_URL=postgres://postgres:postgres@127.0.0.1:5432/test_db >> .env
-          cat .env
+    - name: Install dependencies
+      run: poetry install
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
-      - name: Run tests
-        shell: bash
-        run: |
-          source ~/miniconda3/etc/profile.d/conda.sh
-          conda activate gtfs_builder
-          python -m pytest --cov=gtfs_builder --cov-report=xml tests/
+    - name: Create env file
+      run: |
+        touch .env
+        echo DB_URL=${{ secrets.ADMIN_DB_URL }} >> .env
+        echo ADMIN_DB_URL=${{ secrets.ADMIN_DB_URL }} >> .env
+        echo OVERWRITE_DB=${{ secrets.OVERWRITE_DB }} >> .env
+        echo JSON_SCHEMA_SOURCE=${{ secrets.JSON_SCHEMA_SOURCE }} >> .env
+        echo YML_SOURCE=${{ secrets.YML_SOURCE }} >> .env
+        echo DB_SCHEMA=${{ secrets.DB_SCHEMA }} >> .env
+        cat .env
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Run tests
+      shell: bash
+      run: |
+        source .venv/bin/activate
+        python -m pytest --cov=gtfs_builder --cov-report=xml tests/
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
