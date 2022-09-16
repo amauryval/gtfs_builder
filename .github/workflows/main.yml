@@ -54,12 +54,7 @@ jobs:
     - name: Create env file
       run: |
         touch .env
-        echo DB_URL=${{ secrets.ADMIN_DB_URL }} >> .env
         echo ADMIN_DB_URL=${{ secrets.ADMIN_DB_URL }} >> .env
-        echo OVERWRITE_DB=${{ secrets.OVERWRITE_DB }} >> .env
-        echo JSON_SCHEMA_SOURCE=${{ secrets.JSON_SCHEMA_SOURCE }} >> .env
-        echo YML_SOURCE=${{ secrets.YML_SOURCE }} >> .env
-        echo DB_SCHEMA=${{ secrets.DB_SCHEMA }} >> .env
         cat .env
 
     - name: Run tests
