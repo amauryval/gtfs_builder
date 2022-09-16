@@ -5,7 +5,7 @@ from flask_cors import cross_origin
 from flask import Blueprint
 from flask import request
 
-from gtfs_builder.app.global_values import api_cors_config, existing_study_areas_route_name
+from gtfs_builder.app.global_values import api_cors_config
 from gtfs_builder.app.global_values import url_prefix
 from gtfs_builder.app.global_values import blueprint_name
 from gtfs_builder.app.global_values import existing_study_areas_route_name

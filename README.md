@@ -88,3 +88,11 @@ On going.... [TODO]
 * [study_area_name]_base_lines_data.parq
 
 On going.... [TODO]
+
+
+
+pyenv local 3.10.7
+
+poetry env use 3.10.7
+
+poetry install

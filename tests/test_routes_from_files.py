@@ -18,12 +18,13 @@ def test_nodes_by_date_route_with_route_type(flask_client_from_file):
     assert isinstance(output_data, list)
     assert set(list(output_data[0].keys())) == {'route_long_name', 'x', 'route_type', 'y'}
 
+
 def test_nodes_by_date_route_without_route_type(flask_client_from_file):
     response = flask_client_from_file.get("fake/moving_nodes_by_date?current_date=2007-01-01 09:07:20&bounds=-180,-89,180,89", content_type="html/text")
     assert response.status_code == 200
 
     output_data = response.json
-    assert len(output_data) == 3
+    assert len(output_data) > 0
     assert isinstance(output_data, list)
     assert set(list(output_data[0].keys())) == {'route_long_name', 'x', 'route_type', 'y'}
 

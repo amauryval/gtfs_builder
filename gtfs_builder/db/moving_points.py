@@ -7,7 +7,6 @@ from .base import CommonQueries
 
 from sqlalchemy import Column, and_, func
 from sqlalchemy import String
-from sqlalchemy import Float
 from sqlalchemy.dialects.postgresql import TSRANGE, ExcludeConstraint
 
 from sqlalchemy import Index

@@ -1,50 +1,42 @@
-FROM continuumio/miniconda3:4.12.0 AS build
+ARG PYTHON_VERS=3.10.7-slim
 
-WORKDIR /usr/src/
+### BUILD REQUIREMENTS.txt ###
+FROM python:$PYTHON_VERS as requirements
 
-RUN conda install -c conda-forge mamba conda-pack
+RUN python -m pip install --no-cache-dir --upgrade poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry export --without dev -f requirements.txt --without-hashes -o requirements.txt
 
-COPY environment.yml environment.yml
-RUN mamba env create -f environment.yml \
-    && conda clean --all --yes
+### INSTALL REQUIREMENTS ###
+FROM python:$PYTHON_VERS AS installation
 
-# Use conda-pack to create a standalone enviornment
-# in /venv:
-RUN conda-pack -n gtfs_builder -o /tmp/env.tar \
-    && mkdir /venv \
-    && cd /venv \
-    && tar xf /tmp/env.tar \
-    && rm /tmp/env.tar
+COPY --from=requirements requirements.txt .
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential gcc
 
-# We've put venv in same path it'll be in final image,
-# so now fix up paths:
-RUN /venv/bin/conda-unpack
+RUN python -m venv /opt/venv
+# to use the virtual env
+ENV PATH="/opt/venv/bin:$PATH"
 
+RUN pip install --no-cache-dir -r requirements.txt
 
-FROM debian:stable-slim AS runtime
+### BUILD APP ###
+FROM python:$PYTHON_VERS AS appback
 
-# Copy /venv from the previous stage:
-COPY --from=build /venv /venv
+COPY --from=installation /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 RUN mkdir data
 
-COPY data/ter_moving_stops.parq data/ter_moving_stops.parq
-COPY data/toulouse_moving_stops.parq data/toulouse_moving_stops.parq
-COPY data/lyon_moving_stops.parq data/lyon_moving_stops.parq
+COPY data data
 
 COPY app.py app.py
 # no need to run data processing
 COPY /gtfs_builder gtfs_builder/
 
-# no root user
-RUN useradd --no-create-home ava
-# RUN chown -R ava:ava /venv
+# Switching to non-root user appuser
+RUN useradd ava
 USER ava
 
+CMD ["/bin/bash", "-c"]
 
-# When image is run, run the code with the environment
-# activated:
-SHELL ["/bin/bash", "-c"]
-
-ENTRYPOINT source /venv/bin/activate \
-    && gunicorn --workers=2 -b 0.0.0.0:5002 app:app
+ENTRYPOINT gunicorn -b 0.0.0.0:5002 app:app

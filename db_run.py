@@ -1,10 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from geolib import GeoLib
-from gtfs_builder.main import str_to_dict_from_regex
 
-from gtfs_builder.db import Base
 from gtfs_builder.main import GtfsFormater
 
 import json

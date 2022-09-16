@@ -1,13 +1,9 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 
-from sqlalchemy.dialects.postgresql import TSRANGE
-
-from sqlalchemy import Column, Integer, DateTime, String
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer
 
 import re
-import datetime
 
 from collections import namedtuple
 
@@ -24,13 +20,10 @@ class Base:
 
     uuid = Column(Integer, primary_key=True)
 
-
     @declared_attr
     def __tablename__(cls):
-        words = re.sub(re_table_name, ' \g<1>', cls.__name__).strip()
+        words = re.sub(re_table_name, r"\g<1>", cls.__name__).strip()
         return words.replace(' ', '_').lower()
-
-    uuid = Column(Integer, primary_key=True)
 
     @classmethod
     def schemas(cls):

@@ -14,8 +14,8 @@ import copy
 from pyproj import Geod
 
 import shapely
-from geolib import GeoLib
-from geolib.misc.processing import method_processing_modes
+from geospatial_lib import GeoSpatialLib
+from geospatial_lib.misc.processing import method_processing_modes
 from itertools import chain
 import numpy as np
 import geopandas as gpd
@@ -54,7 +54,7 @@ def str_to_dict_from_regex(string_value, regex):
     return extraction.groupdict()
 
 
-class GtfsFormater(GeoLib):
+class GtfsFormater(GeoSpatialLib):
     pd.options.mode.chained_assignment = None
 
     __MAIN_DB_SCHEMA = "gtfs_data"
@@ -134,7 +134,7 @@ class GtfsFormater(GeoLib):
         self._credentials = {
             **str_to_dict_from_regex(
                 os.environ["ADMIN_DB_URL"],
-                ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
+                r".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>[\W\w-]+):(?P<port>\d+)\/(?P<database>.+)"
             ),
         }
 

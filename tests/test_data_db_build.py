@@ -1,4 +1,3 @@
-import os
 from gtfs_builder.main import GtfsFormater
 
 import datetime
@@ -90,7 +89,6 @@ def test_data_processing_with_shape_id_computed(credentials, session_db):
     assert loads(MovingPoints.get_bounds_by_area("fake").first()[0]).bounds == (-117.132, 36.427, -116.752, 36.916)
     assert MovingPoints.get_bounds_by_area("fake").first()[1] == datetime.datetime(2007, 1, 1, 6, 0)
     assert MovingPoints.get_bounds_by_area("fake").first()[2] == datetime.datetime(2007, 1, 1, 12, 15)
-
 
 
 def test_data_processing_full_data_tresh_1(credentials, session_db):

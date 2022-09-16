@@ -1,6 +1,6 @@
 import os
 from flask import Flask
-from geolib import GeoLib
+from geospatial_lib import GeoSpatialLib
 
 from gtfs_builder.app.routes_from_db import gtfs_routes_from_db
 from gtfs_builder.app.routes_from_files import gtfs_routes_from_files
@@ -19,12 +19,12 @@ def get_db_session():
     credentials = {
         **str_to_dict_from_regex(
             os.environ.get("ADMIN_DB_URL"),
-            ".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
+            r".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
         ),
         **{"scoped_session": True}
     }
 
-    session, _ = GeoLib().sqlalchemy_connection(**credentials)
+    session, _ = GeoSpatialLib().sqlalchemy_connection(**credentials)
     return session
 
 
