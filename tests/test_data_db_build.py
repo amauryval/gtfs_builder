@@ -1,4 +1,4 @@
-from gtfs_builder.main import GtfsFormater
+from gtfs_builder.main import GtfsRebuilder
 
 import datetime
 
@@ -8,7 +8,7 @@ from shapely.wkt import loads
 
 
 def test_data_processing_full_data_thresh_overwrite_table(credentials, session_db):
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
@@ -36,7 +36,7 @@ def test_data_processing_full_data_thresh_overwrite_table(credentials, session_d
 
 
 def test_data_processing_full_data_calendar_dates(credentials, session_db):
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
@@ -64,7 +64,7 @@ def test_data_processing_full_data_calendar_dates(credentials, session_db):
 
 
 def test_data_processing_with_shape_id_computed(credentials, session_db):
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
@@ -93,7 +93,7 @@ def test_data_processing_with_shape_id_computed(credentials, session_db):
 
 def test_data_processing_full_data_tresh_1(credentials, session_db):
     # Warning let this test at the end of the file
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],

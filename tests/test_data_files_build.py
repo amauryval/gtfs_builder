@@ -1,5 +1,5 @@
 import os
-from gtfs_builder.main import GtfsFormater
+from gtfs_builder.main import GtfsRebuilder
 
 import spatialpandas.io as sp_io
 
@@ -13,7 +13,7 @@ def remove_output_file():
 
 def test_data_processing_full_data_thresh_2(credentials):
     remove_output_file()
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
@@ -41,7 +41,7 @@ def test_data_processing_full_data_thresh_2(credentials):
 
 def test_data_processing_full_data_calendar_dates(credentials):
     remove_output_file()
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
@@ -70,7 +70,7 @@ def test_data_processing_full_data_calendar_dates(credentials):
 def test_data_processing_with_shape_id_computed(credentials):
     remove_output_file()
 
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
@@ -99,7 +99,7 @@ def test_data_processing_with_shape_id_computed(credentials):
 def test_data_processing_full_data_tresh_1(credentials):
     # Warning let this test at the end of the file
     remove_output_file()
-    GtfsFormater(
+    GtfsRebuilder(
         study_area_name=credentials["study_area_name"],
         data_path=credentials["input_data_dir"],
         transport_modes=credentials["transport_modes"],
