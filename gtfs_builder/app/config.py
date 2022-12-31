@@ -20,7 +20,7 @@ class Settings:
     DATA_DIR = "data"
 
     # Environment variables
-    AREAS: str = os.getenv("AREAS").split(",")
+    AREAS: list[str] = os.getenv("AREAS").split(",")
     ADMIN_DB_URL = os.getenv("ADMIN_DB_URL")
     MODE: str = os.getenv("MODE")
     DB_SCHEMA = "portfolio"
