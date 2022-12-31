@@ -12,7 +12,13 @@ class RouteBuilder:
         "_optional_args"
     )
 
-    def __init__(self, expected_args: set = set([]), optional_args: set = set([])):
+    def __init__(self, expected_args=None, optional_args=None):
+        if optional_args is None:
+            optional_args = set([])
+
+        if expected_args is None:
+            expected_args = set([])
+
         self._expected_args = expected_args
         self._optional_args = optional_args
         self._full_expected_args = set()
@@ -24,7 +30,9 @@ class RouteBuilder:
             try:
                 self._full_expected_args.update(self._expected_args)
                 self._full_expected_args.update(self._optional_args)
-                assert any([request.args.keys() == self._expected_args, request.args.keys() == self._full_expected_args]), f"{self._expected_args} args expected!"
+                assert any([
+                    request.args.keys() == self._expected_args, request.args.keys() == self._full_expected_args]
+                ), f"{self._expected_args} args expected!"
 
                 return jsonify(func(*args, **kwargs))
 

@@ -6,7 +6,7 @@ from gtfs_builder.core.core import OpenGtfs
 class Trips(OpenGtfs):
 
     _DIRECTION_FIELD_NAME = "direction_id"
-    _DIRECTON_MAPPING = {
+    _DIRECTION_MAPPING = {
         "0": "back",
         "1": "forth"
     }
@@ -28,7 +28,7 @@ class Trips(OpenGtfs):
 
         # None value are set to 3
         self._input_data[self._DIRECTION_FIELD_NAME] = [
-            "3" if row not in self._DIRECTON_MAPPING.keys() else row
+            "3" if row not in self._DIRECTION_MAPPING.keys() else row
             for row in self._input_data[self._DIRECTION_FIELD_NAME]
         ]
 

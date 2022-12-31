@@ -8,11 +8,12 @@ GTFS BUILDER
 A tool to compute all the intermediate stops (geometry and time range) between each trips from a GTFS in order to emulate their travel 
 
 
-## Install the environment with conda
+## Install the environment with pyenv and poetry
 
 ```bash
-conda install --yes --quiet mamba -c conda-forge
-mamba env create --file environment.yml
+pyenv local 3.10.7
+poetry env use 3.10.7
+poetry install
 ```
 
 
@@ -91,8 +92,3 @@ On going.... [TODO]
 
 
 
-pyenv local 3.10.7
-
-poetry env use 3.10.7
-
-poetry install

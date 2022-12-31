@@ -23,7 +23,6 @@ def gtfs_routes_from_files(data, areas_list):
     gtfs_routes = Blueprint(
         blueprint_name,
         __name__,
-        template_folder='templates',
         url_prefix=url_prefix
     )
 
@@ -46,8 +45,11 @@ def gtfs_routes_from_files(data, areas_list):
 
         }
         data_from_area = data[area]
-        bounds = map(float, arg_keys["bounds"].split(","))
-        return GtfsMain(data_from_area["data"]).nodes_by_date_from_parquet(arg_keys["current_date"], bounds, arg_keys["route_type"])
+        bounds = list(map(float, arg_keys["bounds"].split(",")))
+        return GtfsMain(
+            data_from_area["data"]).nodes_by_date_from_parquet(
+            arg_keys["current_date"], bounds, arg_keys["route_type"]
+        )
 
     @gtfs_routes.get(range_dates_route_name)
     @cross_origin(origins=api_cors_config)
@@ -66,4 +68,3 @@ def gtfs_routes_from_files(data, areas_list):
         return GtfsMain(data_from_area["data"]).transport_types_from_parquet()
 
     return gtfs_routes
-
