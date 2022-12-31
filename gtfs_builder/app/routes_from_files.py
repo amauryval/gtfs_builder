@@ -23,7 +23,6 @@ def gtfs_routes_from_files(data, areas_list):
     gtfs_routes = Blueprint(
         blueprint_name,
         __name__,
-        template_folder='templates',
         url_prefix=url_prefix
     )
 
