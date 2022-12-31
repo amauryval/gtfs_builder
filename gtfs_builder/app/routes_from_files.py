@@ -12,11 +12,10 @@ from starlite import Router, Provide, Controller, get
 
 
 class FromFileController(Controller):
-
-    @get("/moving_nodes_by_date")
+    @get("/{area:str}/moving_nodes_by_date")
     def moving_nodes_by_date(self,
                              area: str,
-                             input_data: Dict,
+                             input_data: dict,
                              bounds: str,
                              current_date: str,
                              route_type: str | None = None) -> list[dict]:
@@ -27,19 +26,19 @@ class FromFileController(Controller):
             route_type
         )
 
-    @get("/range_dates")
-    def range_dates(self, area: str, input_data: Dict) -> dict:
+    @get("/{area:str}/range_dates")
+    def range_dates(self, area: str, input_data: dict) -> dict:
         return GtfsMain(input_data[area]).context_data_from_parquet()
 
-    @get("/route_types")
-    def transport_types(self, area: str, input_data: Dict) -> list[str]:
+    @get("/{area:str}/route_types")
+    def transport_types(self, area: str, input_data: dict) -> list[str]:
         return GtfsMain(input_data[area]).transport_types_from_parquet()
 
 
 file_routes = Router(
-    path="/{area:str}",
+    path="/",
     route_handlers=[FromFileController],
-    dependencies={"input_data": Provide(input_data, use_cache=True)}
+    # dependencies={"input_data": Provide(input_data, use_cache=True)}
 )
 
 
