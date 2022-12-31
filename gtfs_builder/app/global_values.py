@@ -4,11 +4,8 @@ api_cors_config = [
     "https://portfolio.amaury-valorge.com"
 ]
 
-blueprint_name = "gtfs"
-url_prefix = f"/api/v1/gtfs_builder/"
-
 existing_study_areas_route_name = "/existing_study_areas"
-moving_nodes_by_date_route_name = "<area>/moving_nodes_by_date"
+moving_nodes_by_date_route_name = ""
 range_dates_route_name = "<area>/range_dates"
 route_types_route_name = "<area>/route_types"
 

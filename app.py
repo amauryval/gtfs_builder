@@ -1,66 +1,27 @@
-import os
-from flask import Flask
-from geospatial_lib import GeoSpatialLib
+import uvicorn
+from starlite import Starlite, CORSConfig,OpenAPIConfig, Router
 
-from gtfs_builder.app.routes_from_db import gtfs_routes_from_db
-from gtfs_builder.app.routes_from_files import gtfs_routes_from_files
-
-from spatialpandas import io
-from spatialpandas import GeoDataFrame
-
-from dotenv import load_dotenv
-
-from gtfs_builder.main import str_to_dict_from_regex
-
-load_dotenv()
+from gtfs_builder.app.config import settings
+from gtfs_builder.app.routes_from_files import file_routes
 
 
-def get_db_session():
-    credentials = {
-        **str_to_dict_from_regex(
-            os.environ.get("ADMIN_DB_URL"),
-            r".+:\/\/(?P<username>.+):(?P<password>.+)@(?P<host>.+):(?P<port>\d{4})\/(?P<database>.+)"
-        ),
-        **{"scoped_session": True}
-    }
+def set_app() -> Starlite:
+    open_api_enabled = True
 
-    session, _ = GeoSpatialLib().sqlalchemy_connection(**credentials)
-    return session
+    # file_db_route = Router(path=settings.API_PREFIX, route_handlers=portfolio_routes)
+    file_base_route = Router(path=settings.API_PREFIX, route_handlers=[file_routes])
 
-
-def get_data(study_area):
-    return GeoDataFrame(io.read_parquet(
-            os.path.join(os.getcwd(), "data", f"{study_area.lower()}_moving_stops.parq"),
-            columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]).astype({
-            "start_date": "uint32",
-            "end_date": "uint32",
-            "geometry": "Point[float64]",
-            "x": "category",
-            "y": "category",
-            "route_type": "category",
-            "route_long_name": "category",
-        })
+    application = Starlite(
+        openapi_config=OpenAPIConfig(title=settings.PROJECT_NAME, version=settings.PROJECT_NAME) if open_api_enabled else None,
+        route_handlers=[file_base_route],
+        cors_config=CORSConfig(allow_origins=settings.ORIGINS),
     )
 
+    return application
 
-app = Flask(__name__)
-mode = os.environ["MODE"]
-if mode == 'file':
-    data = {
-        study_area: {
-            "data": get_data(study_area),
-            "study_area": study_area
-        }
-        for study_area in os.environ["AREAS"].split(",")
-    }
 
-    app.register_blueprint(gtfs_routes_from_files(data, os.environ["AREAS"].split(",")))
-elif mode == "db":
-    app.register_blueprint(gtfs_routes_from_db(get_db_session()))
-
-app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
-app.config['JSON_SORT_KEYS'] = False
-
+app = set_app()
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=7000, threaded=False)
+    uvicorn.run(app, host="0.0.0.0", port=7000)
+
