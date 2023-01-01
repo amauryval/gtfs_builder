@@ -42,6 +42,6 @@ file_routes = Router(
 )
 
 
-@get("/existing_study_areas")
+@get("/existing_study_areas", cache=True)
 async def existing_study_areas() -> list[str]:
     return settings.AREAS

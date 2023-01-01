@@ -7,7 +7,7 @@ from gtfs_builder.app.routes_from_files import file_routes, existing_study_areas
 
 
 def set_app() -> Starlite:
-    open_api_enabled = True
+    open_api_enabled = False
 
     # file_db_route = Router(path=settings.API_PREFIX, route_handlers=portfolio_routes)
     file_base_route = Router(path=settings.API_PREFIX, route_handlers=[file_routes, existing_study_areas])
@@ -16,8 +16,7 @@ def set_app() -> Starlite:
         openapi_config=OpenAPIConfig(title=settings.PROJECT_NAME, version=settings.PROJECT_NAME) if open_api_enabled else None,
         route_handlers=[file_base_route],
         cors_config=CORSConfig(allow_origins=settings.ORIGINS),
-    dependencies={"input_data": Provide(input_data, use_cache=True)}
-
+        dependencies={"input_data": Provide(input_data, use_cache=True)}
     )
 
     return application
