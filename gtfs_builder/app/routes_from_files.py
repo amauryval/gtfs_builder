@@ -13,7 +13,7 @@ from starlite import Router, Provide, Controller, get
 
 class FromFileController(Controller):
     @get("/{area:str}/moving_nodes_by_date")
-    def moving_nodes_by_date(self,
+    async def moving_nodes_by_date(self,
                              area: str,
                              input_data: dict,
                              bounds: str,
@@ -27,11 +27,11 @@ class FromFileController(Controller):
         )
 
     @get("/{area:str}/range_dates")
-    def range_dates(self, area: str, input_data: dict) -> dict:
+    async def range_dates(self, area: str, input_data: dict) -> dict:
         return GtfsMain(input_data[area]).context_data_from_parquet()
 
     @get("/{area:str}/route_types")
-    def transport_types(self, area: str, input_data: dict) -> list[str]:
+    async def transport_types(self, area: str, input_data: dict) -> list[str]:
         return GtfsMain(input_data[area]).transport_types_from_parquet()
 
 
@@ -43,5 +43,5 @@ file_routes = Router(
 
 
 @get("/existing_study_areas")
-def existing_study_areas() -> list[str]:
+async def existing_study_areas() -> list[str]:
     return settings.AREAS
