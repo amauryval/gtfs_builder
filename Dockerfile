@@ -39,4 +39,4 @@ USER ava
 
 CMD ["/bin/bash", "-c"]
 
-ENTRYPOINT gunicorn -b 0.0.0.0:5002 app:app
+ENTRYPOINT uvicorn --host 0.0.0.0 --port 5002 app:app
