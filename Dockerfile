@@ -25,10 +25,6 @@ FROM python:$PYTHON_VERS AS appback
 COPY --from=installation /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN mkdir data
-
-COPY data data
-
 COPY app.py app.py
 # no need to run data processing
 COPY /gtfs_builder gtfs_builder/
