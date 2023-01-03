@@ -11,14 +11,14 @@ def _get_data(area: str) -> GeoDataFrame:
     return GeoDataFrame(io.read_parquet(
         os.path.join(os.getcwd(), settings.DATA_DIR, f"{area.lower()}_moving_stops.parq"),
         columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]).astype({
-        "start_date": "uint32",
-        "end_date": "uint32",
-        "geometry": "Point[float64]",
-        "x": "category",
-        "y": "category",
-        "route_type": "category",
-        "route_long_name": "category",
-    })
+            "start_date": "uint32",
+            "end_date": "uint32",
+            "geometry": "Point[float64]",
+            "x": "category",
+            "y": "category",
+            "route_type": "category",
+            "route_long_name": "category",
+        })
     )
 
 

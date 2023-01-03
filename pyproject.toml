@@ -7,8 +7,8 @@ license = ""
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.10.7"
-geospatial_lib = "0.30.3"
+python = "3.11"
+geospatial_lib = "0.32.0"
 starlite = "1.48.0"
 uvicorn = "0.20.0"
 gunicorn = "20.1.0"

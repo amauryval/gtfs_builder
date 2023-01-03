@@ -1,13 +1,10 @@
 from typing import List, Dict
 
-from gtfs_builder.app.global_values import api_cors_config, date_format
-from gtfs_builder.app.global_values import existing_study_areas_route_name
-from gtfs_builder.app.global_values import range_dates_route_name
-from gtfs_builder.app.global_values import moving_nodes_by_date_route_name
-from gtfs_builder.app.global_values import blueprint_name
-from gtfs_builder.app.global_values import url_prefix
+from sqlalchemy.orm import Session
+from starlite import Router, Controller, get, Provide
 
-from gtfs_builder.app.helpers import RouteBuilder
+from gtfs_builder.app.global_values import date_format
+from gtfs_builder.app.session import get_session
 
 from gtfs_builder.db import MovingPoints
 
@@ -16,39 +13,30 @@ from shapely.wkt import loads
 import datetime
 
 
-def gtfs_routes_from_db(session):
-
-    gtfs_routes = Blueprint(
-        blueprint_name,
-        __name__,
-        template_folder='templates',
-        url_prefix=url_prefix
-    )
+def set_moving_nodes_session(session: Session):
     MovingPoints.set_session(session)
 
-    @gtfs_routes.get(existing_study_areas_route_name)
-    @cross_origin(origins=api_cors_config)
-    @RouteBuilder()
-    def existing_study_areas() -> List[str]:
 
+class FromDbController(Controller):
+
+    @get("/existing_study_areas")
+    async def existing_study_areas(self, session: Session) -> List[str]:
+        set_moving_nodes_session(session)
         return list(map(lambda x: x[0],  MovingPoints.get_areas().all()))
 
-    @gtfs_routes.get(moving_nodes_by_date_route_name)
-    @cross_origin(origins=api_cors_config)
-    @RouteBuilder(expected_args={"current_date", "bounds"})
-    def moving_nodes_by_date(area: str) -> List[Dict]:
-        arg_keys = {
-            "current_date": datetime.datetime.strptime(request.args.get("current_date", type=str), date_format),
-            "bounds": request.args.get("bounds", type=str).split(',')
-        }
-
-        data = MovingPoints.filter_by_date_area(arg_keys["current_date"], area, arg_keys["bounds"])
+    @get("/{area:str}/moving_nodes_by_date")
+    async def moving_nodes_by_date(self, session: Session, area: str, current_date: str, bounds: str) -> List[Dict]:
+        set_moving_nodes_session(session)
+        data = MovingPoints.filter_by_date_area(
+            datetime.datetime.strptime(current_date, date_format),
+            area,
+            list(map(lambda x: float(x), bounds.split(",")))
+        )
         return list(map(lambda x: dict(x), data.all()))
 
-    @gtfs_routes.get(range_dates_route_name)
-    @cross_origin(origins=api_cors_config)
-    @RouteBuilder()
-    def range_dates(area: str) -> Dict:
+    @get("/{area:str}/range_dates")
+    async def range_dates(self, session: Session, area: str) -> Dict:
+        set_moving_nodes_session(session)
 
         data = dict(MovingPoints.get_bounds_by_area(area).all()[0])
         data["data_bounds"] = loads(data["data_bounds"]).bounds
@@ -57,4 +45,9 @@ def gtfs_routes_from_db(session):
 
         return data
 
-    return gtfs_routes
+
+db_routes = Router(
+    path="/",
+    route_handlers=[FromDbController],
+    dependencies={"session": Provide(get_session)}
+)
