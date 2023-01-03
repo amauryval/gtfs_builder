@@ -8,6 +8,7 @@ from shapely.geometry import LineString
 
 import json
 
+
 class InputDataNotFound(Exception):
     pass
 
@@ -133,7 +134,7 @@ class OpenGtfs:
         :rtype: pandas.DataFrame
         """
         if not self.is_df_empty(self._input_data):
-             return self._input_data
+            return self._input_data
 
     def gdf_from_df_long_lat(self, df: pd.DataFrame, longitude: str, latitude: str) -> gpd.GeoDataFrame:
         """
@@ -159,7 +160,8 @@ class OpenGtfs:
 
         return gdf
 
-    def group_by_id_from_point_to_create_linestring(self, gdf: gpd.GeoDataFrame, id_field: str, sequence_field: str, geom_field: str = "geometry") -> gpd.GeoDataFrame:
+    def group_by_id_from_point_to_create_linestring(self, gdf: gpd.GeoDataFrame, id_field: str, sequence_field: str,
+                                                    geom_field: str = "geometry") -> gpd.GeoDataFrame:
         """
 
         :param gdf: geodataframe

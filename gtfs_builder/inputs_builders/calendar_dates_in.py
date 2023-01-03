@@ -1,8 +1,7 @@
 from gtfs_builder.core.core import OpenGtfs
 
-import pandas as pd
-
 import datetime
+
 
 class CalendarDates(OpenGtfs):
 

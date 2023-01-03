@@ -1,7 +1,5 @@
 from gtfs_builder.core.core import OpenGtfs
 
-import numpy as np
-
 
 class Stops(OpenGtfs):
 
@@ -24,7 +22,8 @@ class Stops(OpenGtfs):
     def __check_if_stops_found(self) -> None:
         if "stop_code" not in self._input_data.columns:
             self._core.logger.info('Creating a "stop_code" column...')
-            self._input_data["stop_code"] = [f"{stop_id}_{enum}" for enum, stop_id in enumerate(self._input_data["stop_id"])]
+            self._input_data["stop_code"] = [f"{stop_id}_{enum}"
+                                             for enum, stop_id in enumerate(self._input_data["stop_id"])]
 
     def __get_real_stops(self) -> None:
         location_type_name = "location_type"
