@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from gtfs_builder.main import GtfsRebuilder
+from gtfs_builder.main import GtfsFormater
 
 import json
 
@@ -15,7 +15,7 @@ def build_data(input_params_file_path: str) -> None:
         input_params = json.loads(input_file.read())
 
     for input_data in input_params:
-        GtfsRebuilder(
+        GtfsFormater(
             study_area_name=input_data["study_area_name"],
             data_path=input_data["input_data_dir"],
             transport_modes=input_data["transport_modes"],
