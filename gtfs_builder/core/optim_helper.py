@@ -42,8 +42,8 @@ class DfOptimizer:
     def _check_if_column_contains_integers(self, col: str) -> bool:
         # Integer does not support NA, therefore, NA needs to be filled
         if not np.isfinite(self._df[col]).all():
-            min = self._df[col].min()
-            self._df[col].fillna(min - 1, inplace=True)
+            min_value = self._df[col].min()
+            self._df[col].fillna(min_value - 1, inplace=True)
 
         # tests if column can be converted to an integer
         as_int = self._df[col].fillna(0).astype(np.int64)
@@ -55,33 +55,34 @@ class DfOptimizer:
 
     def _format_integer_column(self, col: str) -> None:
 
-        max = self._df[col].max()
-        min = self._df[col].min()
+        max_value = self._df[col].max()
+        min_value = self._df[col].min()
 
-        if min >= 0:
-            if max < 255:
+        if min_value >= 0:
+            if max_value < 255:
                 self._df[col] = self._df[col].astype(np.uint8)
-            elif max < 65535:
+            elif max_value < 65535:
                 self._df[col] = self._df[col].astype(np.uint16)
-            elif max < 4294967295:
+            elif max_value < 4294967295:
                 self._df[col] = self._df[col].astype(np.uint32)
             else:
                 self._df[col] = self._df[col].astype(np.uint64)
 
         else:
-            if min > np.iinfo(np.int8).min and max < np.iinfo(np.int8).max:
+            if min_value > np.iinfo(np.int8).min and max_value < np.iinfo(np.int8).max:
                 self._df[col] = self._df[col].astype(np.int8)
-            elif min > np.iinfo(np.int16).min and max < np.iinfo(np.int16).max:
+            elif min_value > np.iinfo(np.int16).min and max_value < np.iinfo(np.int16).max:
                 self._df[col] = self._df[col].astype(np.int16)
-            elif min > np.iinfo(np.int32).min and max < np.iinfo(np.int32).max:
+            elif min_value > np.iinfo(np.int32).min and max_value < np.iinfo(np.int32).max:
                 self._df[col] = self._df[col].astype(np.int32)
-            elif min > np.iinfo(np.int64).min and max < np.iinfo(np.int64).max:
+            elif min_value > np.iinfo(np.int64).min and max_value < np.iinfo(np.int64).max:
                 self._df[col] = self._df[col].astype(np.int64)
 
-    def _format_float_column(self, col: str) -> str:
+    def _format_float_column(self, col: str) -> None:
         self._df[col].astype(np.float32)
 
-    def _get_memory_usage(self, df):
+    @staticmethod
+    def _get_memory_usage(df: pd.DataFrame):
         if isinstance(df, pd.DataFrame):
             mem_usage = df.memory_usage(deep=True).sum()
         else:
