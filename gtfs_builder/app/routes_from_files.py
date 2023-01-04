@@ -15,12 +15,11 @@ class FromFileController(Controller):
                              current_date: int,
                              route_type: str | None = None) -> any:
 
-        return []
-        # GtfsMain(geodata[area]).nodes_by_date_from_parquet(
-        #     current_date,
-        #     list(map(lambda x: float(x), bounds.split(","))),
-        #     route_type
-        # )
+        return GtfsMain(geodata[area]).nodes_by_date_from_parquet(
+            current_date,
+            list(map(lambda x: float(x), bounds.split(","))),
+            route_type
+        )
 
     @get("/{area:str}/range_dates")
     def range_dates(self, area: str, geodata: dict) -> dict:
