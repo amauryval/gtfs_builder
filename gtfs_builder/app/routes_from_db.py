@@ -25,10 +25,10 @@ class FromDbController(Controller):
         return list(map(lambda x: x[0],  MovingPoints.get_areas().all()))
 
     @get("/{area:str}/moving_nodes_by_date")
-    def moving_nodes_by_date(self, session: Session, area: str, current_date: str, bounds: str) -> List[Dict]:
+    def moving_nodes_by_date(self, session: Session, area: str, current_date: int, bounds: str) -> List[Dict]:
         set_moving_nodes_session(session)
         data = MovingPoints.filter_by_date_area(
-            datetime.datetime.strptime(current_date, date_format),
+            datetime.datetime.fromtimestamp(current_date),
             area,
             list(map(lambda x: float(x), bounds.split(",")))
         )

@@ -23,10 +23,8 @@ class GtfsMain:
         route_type = self._data["route_type"].unique().to_list()
         return route_type
 
-    def nodes_by_date_from_parquet(self, current_date: str, bounds: Union[List[str], List[float]],
+    def nodes_by_date_from_parquet(self, current_date: int, bounds: Union[List[str], List[float]],
                                    route_type: str = None) -> List[Dict]:
-
-        current_date = datetime.datetime.fromisoformat(current_date).timestamp()
 
         filtered_data = self._data.loc[
             (self._data["start_date"] <= current_date) & (self._data["end_date"] >= current_date)
