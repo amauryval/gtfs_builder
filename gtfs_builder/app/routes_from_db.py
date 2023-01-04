@@ -20,12 +20,12 @@ def set_moving_nodes_session(session: Session):
 class FromDbController(Controller):
 
     @get("/existing_study_areas")
-    async def existing_study_areas(self, session: Session) -> List[str]:
+    def existing_study_areas(self, session: Session) -> List[str]:
         set_moving_nodes_session(session)
         return list(map(lambda x: x[0],  MovingPoints.get_areas().all()))
 
     @get("/{area:str}/moving_nodes_by_date")
-    async def moving_nodes_by_date(self, session: Session, area: str, current_date: str, bounds: str) -> List[Dict]:
+    def moving_nodes_by_date(self, session: Session, area: str, current_date: str, bounds: str) -> List[Dict]:
         set_moving_nodes_session(session)
         data = MovingPoints.filter_by_date_area(
             datetime.datetime.strptime(current_date, date_format),
@@ -35,7 +35,7 @@ class FromDbController(Controller):
         return list(map(lambda x: dict(x), data.all()))
 
     @get("/{area:str}/range_dates")
-    async def range_dates(self, session: Session, area: str) -> Dict:
+    def range_dates(self, session: Session, area: str) -> Dict:
         set_moving_nodes_session(session)
 
         data = dict(MovingPoints.get_bounds_by_area(area).all()[0])

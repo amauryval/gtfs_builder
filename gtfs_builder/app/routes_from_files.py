@@ -8,7 +8,7 @@ from gtfs_builder.app.helpers import input_data
 class FromFileController(Controller):
 
     @get("/{area:str}/moving_nodes_by_date")
-    async def moving_nodes_by_date(self,
+    def moving_nodes_by_date(self,
                                    area: str,
                                    geodata: dict,
                                    bounds: str,
@@ -22,15 +22,15 @@ class FromFileController(Controller):
         )
 
     @get("/{area:str}/range_dates")
-    async def range_dates(self, area: str, geodata: dict) -> dict:
+    def range_dates(self, area: str, geodata: dict) -> dict:
         return GtfsMain(geodata[area]).context_data_from_parquet()
 
     @get("/{area:str}/route_types")
-    async def transport_types(self, area: str, geodata: dict) -> list[str]:
+    def transport_types(self, area: str, geodata: dict) -> list[str]:
         return GtfsMain(geodata[area]).transport_types_from_parquet()
 
     @get("/existing_study_areas")
-    async def existing_study_areas(self) -> list[str]:
+    def existing_study_areas(self) -> list[str]:
         return settings.AREAS
 
 
