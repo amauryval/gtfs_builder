@@ -2,6 +2,7 @@ import uvicorn
 from starlite import Starlite, CORSConfig, OpenAPIConfig, Router
 
 from gtfs_builder.app.config import settings
+from gtfs_builder.app.helpers import input_data
 from gtfs_builder.app.routes_from_db import db_routes
 from gtfs_builder.app.routes_from_files import file_routes
 
@@ -11,8 +12,10 @@ def set_app() -> Starlite:
 
     if settings.MODE == "file":
         base_route = Router(path=settings.API_PREFIX, route_handlers=[file_routes])
+        initial_state = {"geodata": input_data()}
     else:
         base_route = Router(path=settings.API_PREFIX, route_handlers=[db_routes])
+        initial_state = None
 
     application = Starlite(
         openapi_config=OpenAPIConfig(
@@ -20,6 +23,7 @@ def set_app() -> Starlite:
         ) if open_api_enabled else None,
         route_handlers=[base_route],
         cors_config=CORSConfig(allow_origins=settings.ORIGINS),
+        initial_state=initial_state
     )
 
     return application
