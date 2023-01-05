@@ -786,7 +786,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "spatialpandas"
-version = "0.4.5"
+version = "0.4.4"
 description = "Pandas extension arrays for spatial/geometric operations"
 category = "main"
 optional = false
@@ -953,7 +953,7 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "1.1"
 python-versions = "3.10.7"
-content-hash = "ccd11673ec702348466409950b3924c45c0ff7b523cdfa54daa14880b38e237a"
+content-hash = "88f7f550da8d26fe2bde30348b707bc32f0e8d877c56f5daa13a01e0f9240599"
 
 [metadata.files]
 anyio = [
@@ -1874,8 +1874,8 @@ sniffio = [
     {file = "sniffio-1.3.0.tar.gz", hash = "sha256:e60305c5e5d314f5389259b7f22aaa33d8f7dee49763119234af3755c55b9101"},
 ]
 spatialpandas = [
-    {file = "spatialpandas-0.4.5-py2.py3-none-any.whl", hash = "sha256:bf48dbff88943b33be1327fec5a6139fee7dadb1bd23440a18a8cd7e82842ed1"},
-    {file = "spatialpandas-0.4.5.tar.gz", hash = "sha256:1ba9bebb0cf734a3a19037c676da7037301b8b4a0e8452b5cc42cc14654a704c"},
+    {file = "spatialpandas-0.4.4-py2.py3-none-any.whl", hash = "sha256:3db0ea27dbc42ba0db37cec7c29fa6470e3323f6253bf64faffe79c4574a0bbf"},
+    {file = "spatialpandas-0.4.4.tar.gz", hash = "sha256:f4d15ef794aac796e6941c591095dbbe5087e2cff39139618e150365b2e238f5"},
 ]
 sqlalchemy = [
     {file = "SQLAlchemy-1.4.46-cp27-cp27m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:c7a46639ba058d320c9f53a81db38119a74b8a7a1884df44d09fbe807d028aaf"},
