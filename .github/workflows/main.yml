@@ -55,7 +55,7 @@ jobs:
       run: |
         touch .env
         echo AREAS=fake >> .env
-        echo ADMIN_DB_URL=postgres://postgres:postgres@127.0.0.1:5432/test_db >> .env
+        echo ADMIN_DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/test_db >> .env
         cat .env
 
     - name: Run tests

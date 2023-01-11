@@ -143,8 +143,7 @@ class OpenGtfs:
 
         return gdf
 
-    @staticmethod
-    def group_by_id_from_point_to_create_linestring(gdf: gpd.GeoDataFrame, id_field: str, sequence_field: str,
+    def group_by_id_from_point_to_create_linestring(self, gdf: gpd.GeoDataFrame, id_field: str, sequence_field: str,
                                                     geom_field: str = "geometry") -> gpd.GeoDataFrame:
         """
         :param gdf: GeoDataFrame

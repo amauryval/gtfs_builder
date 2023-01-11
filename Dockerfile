@@ -35,4 +35,4 @@ USER ava
 
 CMD ["/bin/bash", "-c"]
 
-ENTRYPOINT gunicorn -b 0.0.0.0:5002 app:app
+ENTRYPOINT gunicorn --bind 0.0.0.0:5002 app:app --worker-class uvicorn.workers.UvicornWorker

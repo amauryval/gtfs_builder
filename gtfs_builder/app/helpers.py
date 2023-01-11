@@ -1,43 +1,29 @@
-import functools
-import traceback
+import os
+from typing import Dict
 
-from flask import jsonify
-from flask import request
+from spatialpandas import io
+from spatialpandas import GeoDataFrame
+
+from gtfs_builder.app.config import settings
 
 
-class RouteBuilder:
-    __slots__ = (
-        "_full_expected_args",
-        "_expected_args",
-        "_optional_args"
+def _get_data(area: str) -> GeoDataFrame:
+    return GeoDataFrame(io.read_parquet(
+        os.path.join(os.getcwd(), settings.DATA_DIR, f"{area.lower()}_moving_stops.parq"),
+        columns=["start_date", "end_date", "x", "y", "geometry", "route_long_name", "route_type"]).astype({
+            "start_date": "uint32",
+            "end_date": "uint32",
+            "geometry": "Point[float64]",
+            "x": "category",
+            "y": "category",
+            "route_type": "category",
+            "route_long_name": "category",
+        })
     )
 
-    def __init__(self, expected_args=None, optional_args=None):
-        if optional_args is None:
-            optional_args = set([])
 
-        if expected_args is None:
-            expected_args = set([])
-
-        self._expected_args = expected_args
-        self._optional_args = optional_args
-        self._full_expected_args = set()
-
-    def __call__(self, func):
-
-        @functools.wraps(func)
-        def wrapper_route(*args, **kwargs):
-            try:
-                self._full_expected_args.update(self._expected_args)
-                self._full_expected_args.update(self._optional_args)
-                assert any([
-                    request.args.keys() == self._expected_args, request.args.keys() == self._full_expected_args]
-                ), f"{self._expected_args} args expected!"
-
-                return jsonify(func(*args, **kwargs))
-
-            except (Exception,):
-
-                return jsonify(exception=traceback.format_exc()), 400
-
-        return wrapper_route
+def input_data() -> Dict:
+    return {
+        area: _get_data(area)
+        for area in settings.AREAS
+    }

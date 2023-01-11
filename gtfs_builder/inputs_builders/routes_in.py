@@ -36,26 +36,19 @@ class Routes(OpenGtfs):
 
     def __get_available_transport_modes(self) -> None:
         transport_found = list(self._input_data[self.__TRANSPORT_MODE_COLUMN].unique())
-        self._available_transport_modes = [
-            value
-            for transport_key, value in self._ROUTE_TYPE_MAPPING.items()
-            if transport_key in transport_found
-        ]
+        self._available_transport_modes = dict(
+            filter(lambda x: x[0] in transport_found, self._ROUTE_TYPE_MAPPING.items())).values()
 
     def __filter_by_route_types(self, transport_modes: List[str]) -> None:
         self.__get_available_transport_modes()
-        transport_modes_id_to_use = [
-            transport_key
-            for transport_key, value in self._ROUTE_TYPE_MAPPING.items()
-            if value in transport_modes
-        ]
+
+        transport_modes_to_use = dict(filter(lambda x: x[-1] in transport_modes, self._ROUTE_TYPE_MAPPING.items()))
         self._input_data = self._input_data.loc[
-            self._input_data[self.__TRANSPORT_MODE_COLUMN].isin(transport_modes_id_to_use)
-        ]
+            self._input_data[self.__TRANSPORT_MODE_COLUMN].isin(transport_modes_to_use.keys())]
         if self.is_df_empty(self._input_data):
-            raise ValueError(f"'{self._input_file}' is empty: check transport mode value(s) "
-                             f"({self.__TRANSPORT_MODE_COLUMN}: Use one of : "
-                             f"{', '.join(self._available_transport_modes)}")
+            raise ValueError(
+                f"'{self._input_file}' is empty: check transport mode value(s) ({self.__TRANSPORT_MODE_COLUMN}: "
+                f"Use one of : {', '.join(self._available_transport_modes)}")
 
     def __check_columns(self) -> None:
         existing_columns = self._input_data.columns.to_list()
