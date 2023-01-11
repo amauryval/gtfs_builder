@@ -16,13 +16,6 @@ poetry env use 3.10.7
 poetry install
 ```
 
-
-then activate the conda env
-
-```bash
-conda activate gtfs_builder
-```
-
 ## Configure parameters files
 
 ### params.json
