@@ -79,7 +79,7 @@
         "block_id": "str",
         "shape_id": "str",
         "wheelchair_accessible": "str",
-        "bikes_allowed": "str",
+        "bikes_allowed": "str"
     },
     "stop_times.txt": {
         "trip_id": "str",
@@ -91,6 +91,6 @@
         "pickup_type": "str",
         "drop_off_type": "str",
         "shape_dist_traveled": "str",
-        "timepoint": "str",
+        "timepoint": "str"
     }
 }

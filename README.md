@@ -82,6 +82,3 @@ On going.... [TODO]
 * [study_area_name]_base_lines_data.parq
 
 On going.... [TODO]
-
-
-
